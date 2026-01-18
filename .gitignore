@@ -1,3 +1,91 @@
+# Environnement virtuel
 env/
+venv/
+ENV/
+.venv/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# Data sensible (CVs personnels)
+data/*.pdf
+data/raw/
+data/processed/
+data/temp/
+
+# Modèles ML (trop lourds pour Git)
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.joblib
+models/checkpoints/
+
+# Logs
+logs/
+*.log
+mlruns/
+wandb/
+
+# IDE & Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Credentials & Config
+.env
+*.env
+.env.local
+config/secrets.yaml
+config/credentials.json
+*.key
+*.pem
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Outputs & Résultats
+outputs/
+results/
+*.csv
+*.xlsx
+!data/sample.csv
+
+# ChromaDB & FAISS
+chroma_db/
+*.index
+*.faiss
+
+# Fichiers temporaires
+tmp/
+temp/
+*.tmp
+cv_text_*.txt
