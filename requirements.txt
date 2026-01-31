@@ -5,41 +5,39 @@ pdf2image==1.16.3
 pytesseract==0.3.10
 
 # Data Processing
-pandas==2.1.4
-numpy==1.26.2
+pandas>=2.2.0
+numpy>=1.26.0
 
 # NLP & ML 
-spacy==3.7.2
-scikit-learn==1.3.2
-transformers==4.36.2
+spacy>=3.7.0
+scikit-learn>=1.4.0
+transformers>=4.36.0
 
 # API & Web
-fastapi==0.108.0
-uvicorn==0.25.0
-pydantic==2.5.3
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.10.0
+python-multipart>=0.0.6
 
 # Vector DB 
-chromadb==0.4.22
-faiss-cpu==1.7.4
+faiss-cpu>=1.8.0
 
 # Visualization
-matplotlib==3.8.2
-seaborn==0.13.0
+matplotlib>=3.9.0
+seaborn>=0.13.0
 
-# Utils
-python-dotenv==1.0.0
-tqdm==4.66.1
+# Semantic Matching
+sentence-transformers>=2.7.0
+
+# Dashboard
+streamlit>=1.30.0
+plotly>=5.18.0
 
 # Jupyter
 jupyter==1.0.0
 ipykernel==6.27.1
 
-# Semantic Matching
-sentence-transformers==2.2.2
-
-# Dashboard
-streamlit==1.29.0
-plotly==5.18.0
-
-# Utilities
+# Utilities (à la fin, pas de doublons)
 python-dotenv==1.0.0
+tqdm==4.66.1
+requests>=2.31.0
