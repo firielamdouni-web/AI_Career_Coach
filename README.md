@@ -4,14 +4,14 @@
 - [x] Parser CV (01_cv_parser.ipynb)
 - [x] Extraction compétences (02_skills_extraction_simple.ipynb)
 - [x] Matching sémantique (03_semantic_matching.ipynb)
-- [ ] Scraping offres (04_job_scraping.ipynb) ← MAINTENANT
-- [ ] Matching CV ↔ Offres (05_job_recommendation.ipynb)
-- [ ] Dashboard Streamlit v1 (app.py)
+- [X] Scraping offres (04_job_scraping.ipynb) 
+- [X] Matching CV ↔ Offres (05_job_recommendation.ipynb)
+- [X] Dashboard Streamlit v1 (app.py)
 
 **Livrable Semaine 2** : Système fonctionnel de bout en bout
 
 ## 📅 SEMAINE 3-4 : ENRICHISSEMENT
-- [ ] API FastAPI (src/api.py)
+- [ ] API FastAPI (src/api.py) ← MAINTENANT
 - [ ] Base vectorielle FAISS (src/vector_store.py)
 - [ ] Simulation entretien LLM (06_interview_simulation.ipynb)
 - [ ] Clustering profils KMeans (07_profile_clustering.ipynb)
