@@ -1,3 +1,37 @@
+## 🚀 Quick Start
+
+### Lancer l'API
+
+```bash
+# Activer l'environnement
+.\env\Scripts\Activate.ps1
+
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Lancer l'API
+uvicorn src.api:app --reload --port 8000
+
+Documentation interactive : http://127.0.0.1:8000/docs
+
+# Tester l'API
+
+# Health Check
+curl http://127.0.0.1:8000/health
+
+# Stats
+curl http://127.0.0.1:8000/api/v1/stats
+
+# Extraction (via Swagger UI)
+# → http://127.0.0.1:8000/docs
+# → POST /api/v1/extract-skills
+# → Upload un CV PDF
+
+# Lancer le dashboard
+streamlit run app.py
+
+Interface utilisateur : http://localhost:8501
+
 # 🎯 ROADMAP PFE - Système d'Aide à l'Emploi pour Juniors
 
 ## 📅 SEMAINE 1-2 : CORE FONCTIONNEL
@@ -11,7 +45,8 @@
 **Livrable Semaine 2** : Système fonctionnel de bout en bout
 
 ## 📅 SEMAINE 3-4 : ENRICHISSEMENT
-- [ ] API FastAPI (src/api.py) ← MAINTENANT
+- [X] API FastAPI (src/api.py) 
+- [x] Dashboard Streamlit avec API ← MAINTENANT
 - [ ] Base vectorielle FAISS (src/vector_store.py)
 - [ ] Simulation entretien LLM (06_interview_simulation.ipynb)
 - [ ] Clustering profils KMeans (07_profile_clustering.ipynb)

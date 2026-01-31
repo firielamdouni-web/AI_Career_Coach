@@ -40,3 +40,4 @@ ipykernel==6.27.1
 # Utilities (à la fin, pas de doublons)
 python-dotenv==1.0.0
 tqdm==4.66.1
+requests>=2.31.0
