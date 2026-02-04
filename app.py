@@ -23,86 +23,321 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personnalisé (identique à avant)
+# ============================================================================
+# CSS MODERNE ET DESIGN SYSTEM
+# ============================================================================
+
 st.markdown("""
 <style>
+    /* ========== POLICE & THÈME GLOBAL ========== */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .main {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background-attachment: fixed;
+    }
+    
+    .block-container {
+        padding: 2rem 3rem;
+        max-width: 1400px;
+    }
+    
+    /* ========== HEADER ANIMÉ ========== */
     .main-header {
-        font-size: 3rem;
-        font-weight: bold;
+        font-size: 4rem;
+        font-weight: 800;
         text-align: center;
-        color: #1f77b4;
-        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+        animation: fadeInDown 1s ease-out;
+        text-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
+    
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     .sub-header {
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         text-align: center;
-        color: #666;
-        margin-bottom: 2rem;
+        color: #ffffff;
+        margin-bottom: 3rem;
+        font-weight: 300;
+        animation: fadeIn 1.5s ease-out;
     }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    /* ========== ZONE D'UPLOAD MODERNE ========== */
     .upload-box {
-        border: 2px dashed #1f77b4;
-        border-radius: 10px;
-        padding: 2rem;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 3px dashed #667eea;
+        border-radius: 20px;
+        padding: 3rem;
         text-align: center;
         margin: 2rem 0;
-        background-color: #f0f8ff;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
     }
+    
+    .upload-box:hover {
+        border-color: #764ba2;
+        transform: translateY(-5px);
+        box-shadow: 0 12px 48px rgba(102, 126, 234, 0.3);
+    }
+    
+    /* ========== CARTES DE JOBS REDESIGNÉES ========== */
     .job-card {
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #e0e0e0;
-        margin-bottom: 1rem;
-        background-color: #f9f9f9;
+        background: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border-left: 5px solid #e0e0e0;
+        position: relative;
+        overflow: hidden;
     }
+    
+    .job-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+    
+    .job-card:hover {
+        transform: translateX(8px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    
     .job-card-excellent {
-        border-color: #4CAF50;
-        background-color: #f1f8f4;
+        border-left-color: #10b981;
     }
+    
+    .job-card-excellent::before {
+        background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+    }
+    
+    .job-card-excellent:hover::before {
+        width: 100%;
+        opacity: 0.05;
+    }
+    
     .job-card-good {
-        border-color: #FFC107;
-        background-color: #fffbf0;
+        border-left-color: #f59e0b;
     }
+    
+    .job-card-good::before {
+        background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+    }
+    
+    .job-card-good:hover::before {
+        width: 100%;
+        opacity: 0.05;
+    }
+    
     .job-card-medium {
-        border-color: #FF9800;
-        background-color: #fff8f0;
+        border-left-color: #ef4444;
     }
+    
+    .job-card-medium::before {
+        background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+    }
+    
+    .job-card-medium:hover::before {
+        width: 100%;
+        opacity: 0.05;
+    }
+    
+    /* ========== BADGES DE SCORE MODERNES ========== */
     .score-badge {
-        display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-weight: bold;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.6rem 1.2rem;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.05);
+        }
+    }
+    
+    .score-excellent {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .score-good {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    
+    .score-medium {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+    
+    .score-low {
+        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        color: white;
+    }
+    
+    /* ========== CARTES MÉTRIQUES GLASSMORPHISM ========== */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        padding: 2rem;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 16px 48px rgba(0,0,0,0.15);
+    }
+    
+    /* ========== STATUT API AVEC ICÔNES ========== */
+    .api-status-connected {
+        color: #10b981;
+        font-weight: 700;
         font-size: 1.1rem;
     }
-    .score-excellent {
-        background-color: #4CAF50;
-        color: white;
-    }
-    .score-good {
-        background-color: #FFC107;
-        color: white;
-    }
-    .score-medium {
-        background-color: #FF9800;
-        color: white;
-    }
-    .score-low {
-        background-color: #9E9E9E;
-        color: white;
-    }
-    .metric-card {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-    .api-status-connected {
-        color: #4CAF50;
-        font-weight: bold;
-    }
+    
     .api-status-disconnected {
-        color: #f44336;
-        font-weight: bold;
+        color: #ef4444;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    /* ========== BOUTONS REDESIGNÉS ========== */
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 2rem !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6) !important;
+    }
+    
+    /* ========== SIDEBAR MODERNE ========== */
+    section[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    section[data-testid="stSidebar"] * {
+        color: white !important;
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown {
+        color: white !important;
+    }
+    
+    /* ========== PROGRESS BAR ========== */
+    .stProgress > div > div {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    /* ========== EXPANDER STYLÉ ========== */
+    .streamlit-expanderHeader {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        font-weight: 600 !important;
+    }
+    
+    /* ========== ANIMATIONS D'ENTRÉE ========== */
+    .element-container {
+        animation: slideInUp 0.5s ease-out;
+    }
+    
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* ========== SCROLLBAR PERSONNALISÉE ========== */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #764ba2;
+    }
+    
+    /* ========== FILE UPLOADER ========== */
+    [data-testid="stFileUploader"] {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 2rem;
+        border: 2px dashed #667eea;
+    }
+    
+    /* ========== SELECTBOX ========== */
+    .stSelectbox > div > div {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 12px;
+    }
+    
+    /* ========== SLIDER ========== */
+    .stSlider > div > div > div {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -154,22 +389,18 @@ def extract_skills_via_api(cv_file):
         dict ou None: {technical_skills, soft_skills, total_skills, cv_text_length}
     """
     try:
-        # Préparer le fichier pour l'upload
-        # Remettre le curseur au début
         cv_file.seek(0)
         
         files = {
             "file": (cv_file.name, cv_file, "application/pdf")
         }
         
-        # Appeler l'API
         response = requests.post(
             f"{API_BASE_URL}/api/v1/extract-skills",
             files=files,
-            timeout=120  # 2 minutes max
+            timeout=120
         )
         
-        # Vérifier le statut
         if response.status_code == 200:
             return response.json()
         else:
@@ -201,7 +432,6 @@ def recommend_jobs_via_api(cv_file, top_n=10, min_score=40.0):
             "file": ("cv.pdf", cv_file, "application/pdf")
         }
         
-        # Convertir min_score de 0-100 vers 0-1 pour FAISS
         faiss_min_score = min_score / 100.0 if min_score > 1 else min_score
         
         params = {
@@ -219,7 +449,6 @@ def recommend_jobs_via_api(cv_file, top_n=10, min_score=40.0):
         if response.status_code == 200:
             data = response.json()
             
-            # ✅ ADAPTER LA RÉPONSE FAISS AU FORMAT ATTENDU
             adapted_recommendations = []
             for job in data['recommendations']:
                 adapted_job = {
@@ -230,8 +459,7 @@ def recommend_jobs_via_api(cv_file, top_n=10, min_score=40.0):
                     "remote": job.get("remote", False),
                     "experience_required": job.get("experience_required", "N/A"),
                     "category": job.get("category", "Non spécifié"),
-                    # ✅ CLÉS IMPORTANTES
-                    "score": job.get("faiss_score_percent", 0),  # Score principal
+                    "score": job.get("faiss_score_percent", 0),
                     "skills_match": job.get("faiss_score_percent", 0),
                     "experience_match": 0,
                     "location_match": 0,
@@ -317,14 +545,11 @@ def get_score_class(score):
 
 
 def display_job_card(job, rank):
-    """Afficher une carte d'offre d'emploi (compatible FAISS)"""
+    """Afficher une carte d'offre d'emploi moderne"""
     
-    # ✅ Récupérer le score (compatible FAISS et classique)
     score = job.get('score', job.get('faiss_score_percent', 0))
-    
     score_class, emoji = get_score_class(score)
     
-    # Classe CSS pour la carte
     card_class = f"job-card job-card-{score_class}" if score_class != "low" else "job-card"
     
     st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
@@ -350,12 +575,12 @@ def display_job_card(job, rank):
         st.markdown(f"**🏠 Remote** : {'Oui ✅' if job.get('remote', False) else 'Non ❌'}")
     
     with col2:
-        skills_match = job.get('skills_match', score)  # Utiliser le score si pas de skills_match
+        skills_match = job.get('skills_match', score)
         st.markdown(f"**🎯 Match compétences** : {skills_match:.1f}%")
         competition = job.get('competition_factor', 0)
         st.markdown(f"**📊 Facteur compétition** : {competition}%")
     
-    # Scores détaillés (si disponibles)
+    # Scores détaillés
     if job.get('experience_match') or job.get('location_match'):
         with st.expander("📊 Voir les scores détaillés"):
             cols = st.columns(4)
@@ -364,14 +589,13 @@ def display_job_card(job, rank):
             cols[2].metric("Localisation", f"{job.get('location_match', 0)}%")
             cols[3].metric("Compétition", f"{job.get('competition_factor', 0)}%")
     
-    # Compétences matchées (si disponibles)
+    # Compétences matchées
     matching_skills = job.get('matching_skills', [])
     if matching_skills:
         with st.expander("🔧 Compétences matchées"):
             for skill in matching_skills:
                 st.markdown(f"- {skill}")
     else:
-        # Afficher la catégorie si pas de compétences
         if job.get('category'):
             st.info(f"📂 Catégorie : {job['category']}")
     
@@ -385,7 +609,7 @@ def display_job_card(job, rank):
 def main():
     """Application principale"""
     
-    # Header
+    # Header moderne
     st.markdown('<div class="main-header">🎯 AI Career Coach</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="sub-header">Trouvez les offres d\'emploi parfaites pour votre profil</div>', 
@@ -406,7 +630,6 @@ def main():
         st.sidebar.markdown(f"**Version** : {health.get('version', 'N/A')}")
         st.sidebar.markdown(f"**Offres disponibles** : {health.get('jobs_available', 0)}")
         
-        # Obtenir les stats
         stats = get_api_stats()
         if stats:
             with st.sidebar.expander("📊 Statistiques système"):
@@ -452,8 +675,7 @@ def main():
         with col1:
             if st.button("🚀 Analyser mon CV", type="primary", use_container_width=True):
                 
-                # Étape 1 : Extraire les compétences
-                with st.spinner("🔍 Extraction des compétences via API... (30-60 secondes)"):
+                with st.spinner("🔍 Extraction des compétences via API..."):
                     skills_result = extract_skills_via_api(uploaded_file)
                 
                 if not skills_result:
@@ -462,8 +684,7 @@ def main():
                 
                 st.success(f"✅ {skills_result['total_skills']} compétences détectées")
                 
-                # Étape 2 : Obtenir les recommandations
-                with st.spinner("🎯 Calcul des recommandations via API... (30-60 secondes)"):
+                with st.spinner("🎯 Calcul des recommandations via API..."):
                     recommendations_result = recommend_jobs_via_api(uploaded_file, top_n=25, min_score=0)
                 
                 if not recommendations_result:
@@ -472,7 +693,6 @@ def main():
                 
                 st.success(f"✅ {len(recommendations_result['recommendations'])} offres analysées")
                 
-                # Sauvegarder dans session state
                 st.session_state.cv_processed = True
                 st.session_state.cv_skills = skills_result['technical_skills']
                 st.session_state.recommendations = recommendations_result['recommendations']
@@ -488,7 +708,7 @@ def main():
                 st.session_state.cv_skills_count = 0
                 st.rerun()
     
-    # Si pas de CV traité, afficher les instructions
+    # Si pas de CV traité
     if not st.session_state.cv_processed:
         st.markdown('<div class="upload-box">', unsafe_allow_html=True)
         st.markdown("### 📄 Comment ça marche ?")
@@ -520,7 +740,6 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtres")
     
-    # Filtre par score minimum
     min_score = st.sidebar.slider(
         "Score minimum (%)",
         min_value=0,
@@ -529,7 +748,6 @@ def main():
         step=5
     )
     
-    # Filtre Remote
     remote_filter = st.sidebar.radio(
         "Type de travail",
         options=["Tous", "Remote uniquement", "On-site uniquement"],
@@ -539,12 +757,11 @@ def main():
     # Appliquer les filtres
     filtered_recs = recommendations.copy()
     
-    # Filtre score
     filtered_recs = [
         job for job in filtered_recs 
         if job.get('score', job.get('faiss_score_percent', 0)) >= min_score
-    ]    
-    # Filtre remote
+    ]
+    
     if remote_filter == "Remote uniquement":
         filtered_recs = [job for job in filtered_recs if job['remote']]
     elif remote_filter == "On-site uniquement":
@@ -586,8 +803,8 @@ def main():
     
     with col1:
         st.subheader("🎯 Distribution des matches")
+        
         def get_job_score(job):
-            """Récupérer le score d'un job (compatible FAISS)"""
             return job.get('score', job.get('faiss_score_percent', 0))
 
         excellent = len([j for j in filtered_recs if get_job_score(j) >= 70])
@@ -618,21 +835,19 @@ def main():
         st.warning("Aucune offre ne correspond aux critères sélectionnés")
         st.info("💡 Essayez de réduire le score minimum ou d'élargir les filtres")
     else:
-        # Nombre d'offres à afficher
         num_to_show = st.selectbox(
             "Nombre d'offres à afficher",
             options=[5, 10, 15, 20, len(filtered_recs)],
             index=1 if len(filtered_recs) >= 10 else 0
         )
         
-        # Afficher les offres
         for i, job in enumerate(filtered_recs[:num_to_show], 1):
             display_job_card(job, i)
     
     # Footer
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: center; color: #666;'>"
+        "<div style='text-align: center; color: white; font-size: 0.9rem;'>"
         "🎯 AI Career Coach | Powered by FastAPI + Sentence-Transformers + Streamlit<br>"
         f"🔌 Connected to API: {API_BASE_URL}"
         "</div>",
