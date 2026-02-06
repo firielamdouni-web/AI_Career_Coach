@@ -292,10 +292,10 @@ def get_score_class(score):
 
 
 def display_job_card(job, rank):
-    """Afficher une carte d'offre d'emploi"""
-    score_class, emoji = get_score_class(job['score'])
+    """Afficher une carte d'offre d'emploi (VERSION SIMPLIFIÉE)"""
+    score = job['score']
+    score_class, emoji = get_score_class(score)
     
-    # Classe CSS pour la carte
     card_class = f"job-card job-card-{score_class}" if score_class != "low" else "job-card"
     
     st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
@@ -309,11 +309,11 @@ def display_job_card(job, rank):
     
     with col2:
         st.markdown(
-            f'<div class="score-badge score-{score_class}">{job["score"]:.1f}%</div>', 
+            f'<div class="score-badge score-{score_class}">{score:.1f}%</div>', 
             unsafe_allow_html=True
         )
     
-    # Détails
+    # Détails simplifiés
     col1, col2 = st.columns(2)
     
     with col1:
@@ -321,16 +321,8 @@ def display_job_card(job, rank):
         st.markdown(f"**🏠 Remote** : {'Oui ✅' if job['remote'] else 'Non ❌'}")
     
     with col2:
-        st.markdown(f"**🎯 Match compétences** : {job['skills_match']:.1f}%")
-        st.markdown(f"**📊 Facteur compétition** : {job['competition_factor']}%")
-    
-    # Scores détaillés
-    with st.expander("📊 Voir les scores détaillés"):
-        cols = st.columns(4)
-        cols[0].metric("Compétences", f"{job['skills_match']:.1f}%")
-        cols[1].metric("Expérience", f"{job['experience_match']}%")
-        cols[2].metric("Localisation", f"{job['location_match']}%")
-        cols[3].metric("Compétition", f"{job['competition_factor']}%")
+        st.markdown(f"**🎯 Score de matching** : {score:.1f}%")
+        st.markdown(f"**Basé sur** : Compétences uniquement")
     
     # Compétences matchées
     with st.expander("🔧 Compétences matchées"):
@@ -546,7 +538,7 @@ def main():
     # Distribution des scores
     st.markdown("---")
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("🎯 Distribution des matches")
         excellent = len([j for j in filtered_recs if j['score'] >= 70])
@@ -558,7 +550,9 @@ def main():
         st.markdown(f"🟡 **Bon match (50-70%)** : {good} offres")
         st.markdown(f"🟠 **Match moyen (40-50%)** : {medium} offres")
         st.markdown(f"🔴 **Match faible (<40%)** : {low} offres")
-    
+        
+        st.info("💡 Le score est basé **uniquement** sur le matching sémantique des compétences")
+
     with col2:
         st.subheader("🔧 Vos compétences")
         for i, skill in enumerate(cv_skills[:10], 1):

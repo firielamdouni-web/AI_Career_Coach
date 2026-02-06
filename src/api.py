@@ -77,7 +77,7 @@ def get_job_matcher() -> JobMatcher:
     """Obtenir le matcher (singleton)"""
     global _job_matcher
     if _job_matcher is None:
-        _job_matcher = JobMatcher(model_name='all-mpnet-base-v2')
+        _job_matcher = JobMatcher()
     return _job_matcher
 
 
@@ -346,32 +346,29 @@ async def recommend_jobs(
     file: UploadFile = File(...),
     top_n: int = Query(10, ge=1, le=25, description="Nombre de recommandations"),
     min_score: float = Query(40.0, ge=0.0, le=100.0, description="Score minimum"),
-    use_faiss: bool = Query(True, description="Utiliser FAISS pour pré-filtrage")
+    use_faiss: bool = Query(False, description="Utiliser FAISS pour pré-filtrage")
 ):
     """
     Obtenir des recommandations d'emploi basées sur un CV
+    SCORING BASÉ UNIQUEMENT SUR LES COMPÉTENCES
     
     **Workflow :**
     1. Extraction des compétences du CV
     2. Si use_faiss=True : Pré-filtrage rapide avec FAISS (top 50)
-    3. Scoring multi-critères avec JobMatcher
+    3. Scoring par compétences avec JobMatcher
     4. Tri et filtrage final
     
     Args:
         file: Fichier PDF du CV
-        top_n: Nombre de recommandations à retourner (défaut: 10)
-        min_score: Score minimum pour filtrer (défaut: 40.0)
-        use_faiss: Utiliser FAISS pour accélérer (défaut: True)
+        top_n: Nombre de recommandations (défaut: 10)
+        min_score: Score minimum (défaut: 40.0)
+        use_faiss: Utiliser FAISS (défaut: False)
         
     Returns:
-        Liste des jobs recommandés avec scores de matching
+        Liste des jobs recommandés avec scores
     """
-    # Vérifier le type de fichier
     if not file.filename.endswith('.pdf'):
-        raise HTTPException(
-            status_code=400,
-            detail="Le fichier doit être un PDF"
-        )
+        raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
     
     tmp_file_path = None
     
@@ -387,10 +384,7 @@ async def recommend_jobs(
         cv_text = parser.parse(tmp_file_path)
         
         if not cv_text or len(cv_text.strip()) < 50:
-            raise HTTPException(
-                status_code=400,
-                detail="Le CV est vide ou illisible"
-            )
+            raise HTTPException(status_code=400, detail="Le CV est vide ou illisible")
         
         # 2. Extraire les compétences
         extractor = get_skills_extractor()
@@ -403,39 +397,25 @@ async def recommend_jobs(
                 detail="Aucune compétence technique détectée dans le CV"
             )
         
-        # 3. Obtenir les candidats (FAISS ou dataset complet)
+        # 3. Obtenir les candidats
         if use_faiss:
-            # MÉTHODE FAISS : Pré-filtrage rapide
             vector_store = get_vector_store()
-            
-            # Récupérer top 50 candidats via FAISS
             faiss_candidates = vector_store.search(
                 cv_skills=cv_skills,
-                cv_text=cv_text[:500],  # Ajouter contexte du CV
+                cv_text=cv_text[:500],
                 top_k=min(50, vector_store.index.ntotal)
             )
-            
-            # Extraire les jobs des résultats FAISS
             candidate_jobs = [job for job, _ in faiss_candidates]
-            
         else:
-            # MÉTHODE CLASSIQUE : Tous les jobs
             dataset = get_jobs_dataset()
             candidate_jobs = dataset['jobs']
         
-        # 4. Scoring détaillé avec JobMatcher
+        # 4. Scoring avec JobMatcher (compétences uniquement)
         matcher = get_job_matcher()
         detailed_results = []
         
         for job in candidate_jobs:
-            # Calculer tous les scores (skills, exp, location, competition)
             detailed_score = matcher.calculate_job_match_score(cv_skills, job)
-            
-            # Trouver le score FAISS si disponible
-            faiss_score = None
-            if use_faiss:
-                faiss_match = next((s for j, s in faiss_candidates if j['job_id'] == job['job_id']), None)
-                faiss_score = faiss_match
             
             detailed_results.append({
                 'job_id': job['job_id'],
@@ -444,23 +424,18 @@ async def recommend_jobs(
                 'location': job['location'],
                 'remote_ok': job.get('remote_ok', False),
                 'experience': job['experience'],
-                'global_score': detailed_score['global_score'],
-                'skills_score': detailed_score['skills_score'],
-                'experience_score': detailed_score['experience_score'],
-                'location_score': detailed_score['location_score'],
-                'competition_score': detailed_score['competition_score'],
-                'faiss_similarity': faiss_score,  # Nouveau champ
+                'score': detailed_score['score'],  # Score unique
                 'skills_details': detailed_score['skills_details'],
                 'matching_skills': detailed_score['skills_details']['top_skills'][:10]
             })
         
-        # 5. Tri par score global
-        detailed_results.sort(key=lambda x: x['global_score'], reverse=True)
+        # 5. Tri par score
+        detailed_results.sort(key=lambda x: x['score'], reverse=True)
         
         # 6. Filtrer par score minimum et top_n
         filtered_jobs = [
             job for job in detailed_results 
-            if job['global_score'] >= min_score
+            if job['score'] >= min_score
         ][:top_n]
         
         # 7. Formater la réponse
@@ -473,11 +448,11 @@ async def recommend_jobs(
                 "location": job['location'],
                 "remote": job['remote_ok'],
                 "experience_required": job['experience'],
-                "score": job['global_score'],
-                "skills_match": job['skills_score'],
-                "experience_match": job['experience_score'],
-                "location_match": job['location_score'],
-                "competition_factor": job['competition_score'],
+                "score": job['score'],
+                "skills_match": job['score'],  # Même valeur
+                "experience_match": 0,  # Toujours 0
+                "location_match": 0,  # Toujours 0
+                "competition_factor": 0,  # Toujours 0
                 "matching_skills": job['matching_skills']
             })
         
@@ -495,13 +470,12 @@ async def recommend_jobs(
             detail=f"Erreur lors de la génération des recommandations: {str(e)}"
         )
     finally:
-        # Nettoyer le fichier temporaire
         if tmp_file_path and os.path.exists(tmp_file_path):
             try:
                 os.unlink(tmp_file_path)
             except:
                 pass
-
+            
 @app.get("/api/v1/jobs", response_model=List[JobDetail], tags=["Jobs"])
 async def list_jobs(
     category: Optional[str] = Query(None, description="Filtrer par catégorie"),

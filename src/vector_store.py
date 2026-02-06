@@ -67,7 +67,7 @@ class JobVectorStore:
         print(f"   Génération des embeddings...")
         embeddings = self.model.encode(
             job_texts,
-            show_progress_bar=True,
+            show_progress_bar=False,
             convert_to_numpy=True,
             normalize_embeddings=True  # Important pour la similarité cosinus
         )

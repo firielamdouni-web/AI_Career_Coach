@@ -7,25 +7,26 @@ from typing import List, Dict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+import logging
 
+# ✅ Initialisation du logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class JobMatcher:
     """
     Classe pour matcher un CV avec des offres d'emploi
     """
     
-    def __init__(self, model_name: str = 'all-mpnet-base-v2'):
-        """
-        Initialiser le matcher avec un modèle Sentence-Transformer
+    def __init__(self):
+        """Initialize JobMatcher with sentence transformer model"""
+        logger.info("Initialisation du JobMatcher...")
+        self.model = SentenceTransformer('all-mpnet-base-v2')
+        logger.info("✅ JobMatcher initialisé avec all-mpnet-base-v2")
         
-        Args:
-            model_name: Nom du modèle (par défaut all-mpnet-base-v2)
-        """
-        print(f"🔍 Chargement du modèle {model_name}...")
-        self.model = SentenceTransformer(model_name)
-        self.model_name = model_name
-        print(f"✅ Modèle chargé")
-    
     def calculate_skills_similarity(
         self, 
         cv_skills: List[str], 
@@ -33,16 +34,16 @@ class JobMatcher:
     ) -> Dict:
         """
         Calculer la similarité entre compétences CV et description d'offre
-        Méthode : Découpe la description en phrases et prend le meilleur match
-        
-        Args:
-            cv_skills: Liste de compétences du CV
-            job_description: Description complète de l'offre
-            
-        Returns:
-            Dict avec score et détails par compétence
+        SCORES BRUTS (sans round) pour précision maximale du tri
         """
-        # Découper la description en phrases pertinentes
+        if not cv_skills or not job_description:
+            return {
+                'overall_score': 0,
+                'high_matches': 0,
+                'total_skills': 0,
+                'matches': []
+            }
+        
         job_sentences = [
             s.strip() 
             for s in job_description.split('\n') 
@@ -50,39 +51,45 @@ class JobMatcher:
         ]
         
         if not job_sentences:
-            # Fallback : utiliser la description complète
             job_sentences = [job_description]
         
-        # Vectoriser toutes les phrases
-        job_embeddings = self.model.encode(job_sentences)
+        try:
+            job_embeddings = self.model.encode(job_sentences, show_progress_bar=False)
+        except Exception as e:
+            logger.error(f"Erreur encodage phrases : {e}")
+            return {
+                'overall_score': 0,
+                'high_matches': 0,
+                'total_skills': len(cv_skills),
+                'matches': []
+            }
         
-        # Analyser chaque compétence
         matches = []
         
         for skill in cv_skills:
-            skill_embedding = self.model.encode([skill.lower()])
-            
-            # Calculer similarité avec CHAQUE phrase
-            similarities = cosine_similarity(skill_embedding, job_embeddings)[0]
-            
-            # Prendre la MEILLEURE similarité
-            max_similarity = float(max(similarities)) * 100
-            
-            # Trouver quelle phrase matche le mieux
-            best_match_idx = similarities.argmax()
-            best_sentence = job_sentences[best_match_idx]
-            
-            matches.append({
-                'skill': skill,
-                'similarity': round(max_similarity, 2),
-                'match': 'high' if max_similarity >= 40 else 'medium' if max_similarity >= 30 else 'low',
-                'matched_sentence': best_sentence[:60] + '...' if len(best_sentence) > 60 else best_sentence
-            })
+            try:
+                skill_embedding = self.model.encode([skill.lower()], show_progress_bar=False)
+                similarities = cosine_similarity(skill_embedding, job_embeddings)[0]
+                
+                # ✅ SCORE BRUT (pas de round)
+                max_similarity = max(similarities) * 100
+                
+                best_match_idx = similarities.argmax()
+                best_sentence = job_sentences[best_match_idx]
+                
+                matches.append({
+                    'skill': skill,
+                    'similarity': max_similarity,  # ← PAS de round()
+                    'match': 'high' if max_similarity >= 40 else 'medium' if max_similarity >= 30 else 'low',
+                    'matched_sentence': best_sentence[:60] + '...' if len(best_sentence) > 60 else best_sentence
+                })
+            except Exception as e:
+                logger.warning(f"Erreur skill '{skill}' : {e}")
+                continue
         
-        # Trier par similarité décroissante
         matches = sorted(matches, key=lambda x: x['similarity'], reverse=True)
         
-        # Calculer score global
+        # ✅ SCORE GLOBAL BRUT (pas de round)
         if matches:
             avg_similarity = sum(m['similarity'] for m in matches) / len(matches)
             high_matches = len([m for m in matches if m['match'] == 'high'])
@@ -91,7 +98,7 @@ class JobMatcher:
             high_matches = 0
         
         return {
-            'overall_score': round(avg_similarity, 2),
+            'overall_score': avg_similarity,  # ← PAS de round()
             'high_matches': high_matches,
             'total_skills': len(cv_skills),
             'matches': matches
@@ -103,85 +110,41 @@ class JobMatcher:
         job: Dict
     ) -> Dict:
         """
-        Calculer un score complet de matching entre CV et offre
-        
-        Args:
-            cv_skills: Liste de compétences du CV
-            job: Dictionnaire d'une offre d'emploi
-            
-        Returns:
-            Dict avec score global et détails
+        Calculer un score de matching entre CV et offre
+        SCORE BRUT stocké, arrondi uniquement à l'affichage
         """
-        # 1️⃣ Score de compétences (similarité sémantique)
         job_requirements = job.get('requirements', [])
         job_description = job.get('description', '')
         job_text = ' '.join(job_requirements) + '\n' + job_description
         
-        # Utiliser la méthode améliorée (matching par phrases)
         skills_result = self.calculate_skills_similarity(cv_skills, job_text)
-        skills_score = skills_result['overall_score']
-        
-        # 2️⃣ Score d'expérience
-        experience_match = 50  # Score par défaut
-        exp_required = job.get('experience', '').lower()
-        
-        if 'junior' in exp_required or '0-2 ans' in exp_required:
-            experience_match = 100
-        elif '1-3 ans' in exp_required or '2-4 ans' in exp_required:
-            experience_match = 75
-        elif 'senior' in exp_required or '5+' in exp_required:
-            experience_match = 30
-        
-        # 3️⃣ Score de localisation
-        location_score = 100 if job.get('remote_ok', False) else 80
-        
-        # 4️⃣ Score de compétitivité
-        applicants = int(job.get('applicants', 50))
-        if applicants < 30:
-            competition_score = 100
-        elif applicants < 80:
-            competition_score = 70
-        else:
-            competition_score = 40
-        
-        # 🎯 SCORE GLOBAL (pondéré)
-        global_score = (
-            skills_score * 0.50 +       # 50% sur les compétences
-            experience_match * 0.25 +   # 25% sur l'expérience
-            location_score * 0.15 +     # 15% sur la localisation
-            competition_score * 0.10    # 10% sur la compétition
-        )
+        skills_score = skills_result['overall_score']  # ← Score brut
         
         return {
             'job_id': job.get('job_id', 'unknown'),
-            'title': job['title'],
-            'company': job['company'],
-            'location': job['location'],
+            'title': job.get('title', 'N/A'),
+            'company': job.get('company', 'N/A'),
+            'location': job.get('location', 'N/A'),
             'type': job.get('type', 'CDI'),
             'experience': job.get('experience', 'N/A'),
             'salary': job.get('salary', 'N/A'),
             'remote_ok': job.get('remote_ok', False),
-            'applicants': applicants,
+            'applicants': int(job.get('applicants', 50)),
             'url': job.get('url', ''),
             
-            # Scores détaillés
-            'global_score': round(float(global_score), 1),
-            'skills_score': round(float(skills_score), 1),
-            'experience_score': int(experience_match),
-            'location_score': int(location_score),
-            'competition_score': int(competition_score),
+            # ✅ SCORE BRUT (pas de round ici, sera fait à l'affichage)
+            'score': float(skills_score),  # ← PAS de round()
             
-            # Détails des compétences matchées
             'skills_details': {
                 'high_matches': skills_result['high_matches'],
                 'top_skills': [m['skill'] for m in skills_result['matches'][:5]]
             },
             
-            # Métadonnées
             'requirements': job.get('requirements', []),
             'nice_to_have': job.get('nice_to_have', []),
             'description_preview': job.get('description', '')[:200] + '...'
         }
+    
     
     def rank_jobs(
         self, 
@@ -189,7 +152,7 @@ class JobMatcher:
         jobs: List[Dict]
     ) -> List[Dict]:
         """
-        Classer toutes les offres par score décroissant
+        Classer toutes les offres par score de compétences décroissant
         
         Args:
             cv_skills: Liste de compétences du CV
@@ -198,18 +161,41 @@ class JobMatcher:
         Returns:
             Liste d'offres triées par score
         """
+        if not cv_skills or not jobs:
+            logger.warning("⚠️  CV skills ou jobs vides")
+            return []
+        
+        import time
+        start_time = time.time()
+        
+        logger.info(f"🎯 Ranking {len(jobs)} offres avec {len(cv_skills)} compétences")
+        logger.info("📊 Scoring basé uniquement sur les compétences")
+        
         recommendations = []
         
-        for job in jobs:
-            score_data = self.calculate_job_match_score(cv_skills, job)
-            recommendations.append(score_data)
+        for i, job in enumerate(jobs):
+            try:
+                score_data = self.calculate_job_match_score(cv_skills, job)
+                recommendations.append(score_data)
+            except Exception as e:
+                logger.error(f"Erreur job {job.get('job_id', 'unknown')} : {e}")
+                continue
+            
+            if (i + 1) % 10 == 0:
+                logger.info(f"  ✅ Traité {i+1}/{len(jobs)} offres...")
         
-        # Trier par score décroissant
         recommendations = sorted(
             recommendations, 
-            key=lambda x: x['global_score'], 
+            key=lambda x: x['score'], 
             reverse=True
         )
+        
+        elapsed = time.time() - start_time
+        logger.info(f"✅ Ranking terminé en {elapsed:.2f}s")
+        
+        if recommendations:
+            logger.info(f"📊 Meilleur score: {recommendations[0]['score']:.1f}% | "
+                       f"Pire score: {recommendations[-1]['score']:.1f}%")
         
         return recommendations
 
