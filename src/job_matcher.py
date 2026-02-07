@@ -408,7 +408,7 @@ class JobMatcher:
 
 
 # Fonction utilitaire pour charger le matcher
-def load_matcher(model_name: str = 'all-mpnet-base-v2') -> JobMatcher:
+def load_matcher() -> JobMatcher:
     """
     Charger un JobMatcher pré-configuré
     
@@ -418,4 +418,4 @@ def load_matcher(model_name: str = 'all-mpnet-base-v2') -> JobMatcher:
     Returns:
         Instance de JobMatcher
     """
-    return JobMatcher(model_name)
+    return JobMatcher()
