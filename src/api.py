@@ -155,6 +155,7 @@ class JobRecommendation(BaseModel):
     location_match: int
     competition_factor: int
     matching_skills: List[str]
+    missing_skills: List[str] = []
 
 
 class RecommendationsResponse(BaseModel):
@@ -415,16 +416,29 @@ async def recommend_jobs(
         detailed_results = []
         
         for job in candidate_jobs:
-            # ✅ Calcul du score avec Approche 4
+            # Calcul du score avec Approche 4
             detailed_score = matcher.calculate_job_match_score(cv_skills, job)
             
-            # ✅ Extraire les skills matchés depuis top_matches
+            # Extraire TOUTES les skills matchées
             matching_skills = []
+            matched_job_skills = set()  # Tracker les job skills matchées
+            
             for match in detailed_score['skills_details']['top_matches']:
-                # Format : "python (100.0%)" ou "job_skill ↔ cv_skill (sim%)"
-                matching_skills.append(
-                    f"{match['job_skill']} ↔ {match['cv_skill']} ({match['similarity']:.0f}%)"
-                )
+                # Ajouter cv_skill à matching_skills
+                skill_name = match['cv_skill']
+                if skill_name not in matching_skills:
+                    matching_skills.append(skill_name)
+                
+                # Tracker la job_skill correspondante
+                matched_job_skills.add(match['job_skill'])
+            
+            # Calculer les skills manquantes
+            # = Toutes les skills du job - celles qui ont matché
+            all_job_skills = matcher.extract_job_skills(job)
+            missing_skills = [
+                skill for skill in all_job_skills 
+                if skill not in matched_job_skills
+            ]
             
             detailed_results.append({
                 'job_id': job['job_id'],
@@ -433,9 +447,10 @@ async def recommend_jobs(
                 'location': job['location'],
                 'remote_ok': job.get('remote_ok', False),
                 'experience': job['experience'],
-                'score': detailed_score['score'],  # ✅ Score global
-                'skills_details': detailed_score['skills_details'],  # ✅ Détails complets
-                'matching_skills': matching_skills[:10]  # ✅ Top 10 matchs formatés
+                'score': detailed_score['score'],
+                'skills_details': detailed_score['skills_details'],
+                'matching_skills': matching_skills,  # Skills CV qui matchent
+                'missing_skills': missing_skills  # Skills job non matchées
             })
         
         # 5. Tri par score
@@ -462,7 +477,8 @@ async def recommend_jobs(
                 "experience_match": 0,  # Deprecated (compatibilité)
                 "location_match": 0,  # Deprecated (compatibilité)
                 "competition_factor": 0,  # Deprecated (compatibilité)
-                "matching_skills": job['matching_skills']  # ✅ Liste formatée
+                "matching_skills": job['matching_skills'],  
+                "missing_skills": job['missing_skills']
             })
         
         return {

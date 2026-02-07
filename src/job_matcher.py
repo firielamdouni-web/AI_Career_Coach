@@ -315,7 +315,7 @@ class JobMatcher:
         
         # Extraire les top skills matchés
         top_matched_skills = []
-        for match in skills_result.get('matches', [])[:5]:
+        for match in skills_result.get('matches', []):
             if match['status'] == 'covered':
                 top_matched_skills.append({
                     'job_skill': match['job_skill'],

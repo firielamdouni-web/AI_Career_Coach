@@ -326,13 +326,41 @@ def display_job_card(job, rank):
     # Compétences matchées
     with st.expander("🔧 Compétences matchées"):
         matching_skills = job.get('matching_skills', [])
+        
         if matching_skills:
-            for skill in matching_skills:
-                st.markdown(f"- {skill}")
+            st.markdown(f"**{len(matching_skills)} compétences correspondent à cette offre :**")
+            st.markdown("---")
+            
+            # Afficher en colonnes pour meilleure lisibilité
+            num_cols = 3
+            cols = st.columns(num_cols)
+            
+            for idx, skill in enumerate(matching_skills):
+                col_idx = idx % num_cols
+                with cols[col_idx]:
+                    st.markdown(f"✓ {skill}")
         else:
             st.info("Aucune compétence matchée disponible")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Compétences manquantes
+    missing_skills = job.get('missing_skills', [])
+    if missing_skills:
+        with st.expander(f"⚠️ Compétences manquantes ({len(missing_skills)})"):
+            st.markdown(f"**{len(missing_skills)} compétences requises que vous ne possédez pas (ou non détectées) :**")
+            st.markdown("---")
+            
+            # Afficher en colonnes (même format)
+            num_cols = 3
+            cols = st.columns(num_cols)
+            
+            for idx, skill in enumerate(missing_skills):
+                col_idx = idx % num_cols
+                with cols[col_idx]:
+                    st.markdown(f"❌ {skill}")
+            
+            # Message d'encouragement
+            st.markdown("---")
+            st.info("💡 **Conseil** : Ajoutez ces compétences à votre CV ou suivez une formation pour améliorer votre score !")
 
 
 # ============================================================================
