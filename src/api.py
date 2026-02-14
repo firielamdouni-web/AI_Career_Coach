@@ -390,7 +390,9 @@ async def recommend_jobs(
         # 2. Extraire les compétences
         extractor = get_skills_extractor()
         skills_result = extractor.extract_from_cv(cv_text)
-        cv_skills = skills_result['technical_skills']
+        technical_skills = skills_result['technical_skills']
+        soft_skills = skills_result['soft_skills']
+        cv_skills = technical_skills + soft_skills 
         
         if not cv_skills:
             raise HTTPException(

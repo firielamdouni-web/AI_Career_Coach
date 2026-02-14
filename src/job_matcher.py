@@ -65,6 +65,13 @@ class JobMatcher:
                 skill_lower = skill.lower().strip()
                 if skill_lower not in variations_map:
                     variations_map[skill_lower] = [skill_lower]
+
+        # Ajouter les soft skills (eux-mêmes = forme canonique)
+        if 'soft_skills' in self.skills_db:
+            for skill in self.skills_db['soft_skills']:
+                skill_lower = skill.lower().strip()
+                if skill_lower not in variations_map:
+                    variations_map[skill_lower] = [skill_lower]
             
         return variations_map
     

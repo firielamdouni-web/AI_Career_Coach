@@ -166,7 +166,7 @@ def extract_skills_via_api(cv_file):
         response = requests.post(
             f"{API_BASE_URL}/api/v1/extract-skills",
             files=files,
-            timeout=120  # 2 minutes max
+            timeout=480  # 8 minutes max
         )
         
         # Vérifier le statut
@@ -220,7 +220,7 @@ def recommend_jobs_via_api(cv_file, top_n=10, min_score=40.0):
             f"{API_BASE_URL}/api/v1/recommend-jobs",
             files=files,
             params=params,
-            timeout=120
+            timeout=480  # 8 minutes max
         )
         
         if response.status_code == 200:
