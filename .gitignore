@@ -76,7 +76,6 @@ config/credentials.json
 outputs/
 results/
 *.csv
-*.xlsx
 !data/sample.csv
 
 # ChromaDB & FAISS

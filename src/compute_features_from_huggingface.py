@@ -64,7 +64,7 @@ print("✅ Modules initialisés avec succès\n")
 # ===== CHARGEMENT DU DATASET =====
 print("📥 Chargement du dataset...")
 
-csv_path = Path('data/huggingface_resume_job_fit.xlsx')
+csv_path = Path('data/processed/huggingface_resume_job_fit.xlsx')
 
 if not csv_path.exists():
     print(f"❌ Fichier non trouvé : {csv_path}")
@@ -358,7 +358,7 @@ for i, (feat, corr) in enumerate(correlations.head(3).items(), 1):
     print(f"   {i}. {feat:25} → {corr:.3f}")
 
 # ===== SAUVEGARDE =====
-output_path = Path('data/ml_features_optimized_v2.csv')
+output_path = Path('data/processed/dataset_resume_job_fit_processed.csv')
 output_path.parent.mkdir(parents=True, exist_ok=True)
 
 features_df.to_csv(output_path, index=False)
