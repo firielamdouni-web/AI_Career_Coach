@@ -1,0 +1,57 @@
+# ============================================================================
+# ÉTAPE 1 : IMAGE DE BASE
+# ============================================================================
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# ============================================================================
+# ÉTAPE 2 : INSTALLATION DES DÉPENDANCES SYSTÈME
+# ============================================================================
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# ÉTAPE 3 : COPIER ET INSTALLER LES DÉPENDANCES PYTHON
+# ============================================================================
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# ÉTAPE 4 : COPIER LE CODE SOURCE
+# ============================================================================
+# Copier uniquement les fichiers nécessaires pour Streamlit
+COPY app.py .
+COPY pages/ ./pages/
+COPY data/ ./data/
+COPY .streamlit/ ./.streamlit/
+
+# ============================================================================
+# ÉTAPE 5 : CRÉER UN FICHIER DE CONFIG STREAMLIT
+# ============================================================================
+RUN mkdir -p /root/.streamlit
+
+# Créer le fichier de configuration Streamlit
+RUN echo '\
+[server]\n\
+headless = true\n\
+port = 8501\n\
+enableCORS = false\n\
+enableXsrfProtection = false\n\
+\n\
+[browser]\n\
+gatherUsageStats = false\n\
+' > /root/.streamlit/config.toml
+
+# ============================================================================
+# ÉTAPE 6 : EXPOSER LE PORT
+# ============================================================================
+EXPOSE 8501
+
+# ============================================================================
+# ÉTAPE 7 : COMMANDE DE DÉMARRAGE
+# ============================================================================
+CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0"]

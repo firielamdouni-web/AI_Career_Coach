@@ -7,6 +7,7 @@ Utilise l'API FastAPI pour tous les traitements
 import streamlit as st
 import requests
 import json
+import os 
 from pathlib import Path
 from datetime import datetime
 
@@ -14,7 +15,7 @@ from datetime import datetime
 # CONFIGURATION
 # ============================================================================
 
-API_BASE_URL = "http://localhost:8000"  # URL de l'API FastAPI
+API_BASE_URL = os.getenv("API_URL", "http://ai-career-coach-api:8000")
 
 st.set_page_config(
     page_title="AI Career Coach",
@@ -273,6 +274,33 @@ def get_jobs_list(category=None, remote=None, limit=25):
         
     except requests.exceptions.RequestException:
         return None
+
+def get_api_url():
+    """
+    Détecter automatiquement l'URL de l'API
+    
+    Returns:
+        str: URL de l'API (localhost ou nom Docker)
+    """
+    # 1. Vérifier si on est dans Docker (variable d'env)
+    if os.getenv("RUNNING_IN_DOCKER"):
+        return "http://ai-career-coach-api:8000"
+    
+    # 2. Sinon, vérifier si l'API est accessible sur localhost
+    try:
+        response = requests.get("http://localhost:8000/health", timeout=2)
+        if response.status_code == 200:
+            return "http://localhost:8000"
+    except:
+        pass
+    
+    # 3. Fallback : URL depuis variable d'environnement ou défaut Docker
+    return os.getenv("API_BASE_URL", "http://ai-career-coach-api:8000")
+
+# Utiliser la fonction pour obtenir l'URL
+API_BASE_URL = get_api_url()
+
+print(f"🔌 API detectée : {API_BASE_URL}")
 
 
 # ============================================================================

@@ -1,0 +1,127 @@
+version: '3.8'
+
+# ============================================================================
+# DÉFINITION DES SERVICES (CONTENEURS)
+# ============================================================================
+services:
+
+  # --------------------------------------------------------------------------
+  # SERVICE 1 : BASE DE DONNÉES POSTGRESQL
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-career-coach-db
+    restart: unless-stopped
+    
+    environment:
+      POSTGRES_USER: coach_user
+      POSTGRES_PASSWORD: coach_password_2024
+      POSTGRES_DB: ai_career_coach
+      PGDATA: /var/lib/postgresql/data/pgdata
+    
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      #Initialiser la BDD au premier démarrage
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coach_user -d ai_career_coach"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    
+    networks:
+      - ai-coach-network
+      
+
+  # --------------------------------------------------------------------------
+  # SERVICE 2 : API FASTAPI
+  # --------------------------------------------------------------------------
+  api:
+    image: ai-career-coach-api:latest
+    container_name: ai-career-coach-api
+    restart: unless-stopped
+    
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Limite à 8GB
+        reservations:
+          memory: 4G 
+
+    environment:
+      # Configuration API
+      API_ENV: production
+      API_PORT: 8000
+      
+      # Configuration PostgreSQL
+      DATABASE_URL: postgresql://coach_user:coach_password_2024@postgres:5432/ai_career_coach
+      
+      # Configuration Groq (pour simulation entretien)
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    
+    volumes:
+      # Monter les données (pour éviter de reconstruire l'image à chaque modif)
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+    
+    ports:
+      - "8000:8000"
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    
+    networks:
+      - ai-coach-network
+
+  # --------------------------------------------------------------------------
+  # SERVICE 3 : STREAMLIT FRONTEND
+  # --------------------------------------------------------------------------
+  streamlit:
+    image: ai-career-coach-streamlit:latest
+    container_name: ai-career-coach-frontend
+    restart: unless-stopped
+    
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      # URL de l'API (nom du service Docker)
+      API_BASE_URL: http://ai-career-coach-api:8000  # ✅ Nom du service Docker
+    
+    volumes:
+      # Monter uniquement les fichiers Streamlit
+      - ./app.py:/app/app.py
+      - ./pages:/app/pages
+    
+    ports:
+      - "8501:8501"
+    
+    depends_on:
+      - api
+    
+    networks:
+      - ai-coach-network
+
+# ============================================================================
+# DÉFINITION DES VOLUMES (STOCKAGE PERSISTANT)
+# ============================================================================
+volumes:
+  postgres_data:
+    driver: local
+
+# ============================================================================
+# DÉFINITION DES RÉSEAUX (COMMUNICATION INTER-CONTENEURS)
+# ============================================================================
+networks:
+  ai-coach-network:
+    driver: bridge

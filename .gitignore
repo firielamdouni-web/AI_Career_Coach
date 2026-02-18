@@ -93,3 +93,8 @@ tmp/
 temp/
 *.tmp
 cv_text_*.txt
+
+# Variables d'environnement
+.env
+.env.local
+.env.production

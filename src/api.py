@@ -214,6 +214,14 @@ class AnswerEvaluationResponse(BaseModel):
     points_amelioration: List[str]
     recommandations: List[str]
 
+class SearchRequest(BaseModel):
+    query: str = Field(..., description="Requête de recherche")
+    top_k: int = Field(5, ge=1, le=25, description="Nombre de résultats")
+
+class MatchRequest(BaseModel):
+    cv_text: str = Field(..., description="Texte du CV")
+    top_k: int = Field(5, ge=1, le=25, description="Nombre de résultats")
+
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
@@ -785,6 +793,106 @@ async def evaluate_answer(request: AnswerEvaluationRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Erreur évaluation : {str(e)}"
+        )
+
+@app.post("/api/v1/search", tags=["Jobs"])
+async def search_jobs(request: SearchRequest):
+    """
+    Rechercher des offres d'emploi par similarité sémantique
+    
+    Args:
+        request: {query: str, top_k: int}
+        
+    Returns:
+        Liste des offres les plus pertinentes
+    """
+    try:
+        vector_store = get_vector_store()
+        
+        # Recherche FAISS
+        results = vector_store.search(
+            cv_skills=[],  # Pas de skills spécifiques
+            cv_text=request.query,  # Utiliser la query comme texte
+            top_k=request.top_k
+        )
+        
+        # Formater les résultats
+        formatted_results = []
+        for job, score in results:
+            formatted_results.append({
+                "job_id": job['job_id'],
+                "title": job['title'],
+                "company": job['company'],
+                "location": job['location'],
+                "remote": job.get('remote_ok', False),
+                "experience_required": job['experience'],
+                "score": float(score) * 100,  # Convertir en %
+                "description": job['description'][:200] + "..."
+            })
+        
+        return {
+            "query": request.query,
+            "results": formatted_results,
+            "count": len(formatted_results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors de la recherche: {str(e)}"
+        )
+
+
+@app.post("/api/v1/match", tags=["Jobs"])
+async def match_cv(request: MatchRequest):
+    """
+    Matcher un texte de CV avec les meilleures offres
+    
+    Args:
+        request: {cv_text: str, top_k: int}
+        
+    Returns:
+        Liste des meilleurs matches
+    """
+    try:
+        # Extraire les compétences du texte
+        extractor = get_skills_extractor()
+        skills_result = extractor.extract_from_cv(request.cv_text)
+        cv_skills = skills_result['technical_skills'] + skills_result['soft_skills']
+        
+        # Recherche FAISS
+        vector_store = get_vector_store()
+        results = vector_store.search(
+            cv_skills=cv_skills,
+            cv_text=request.cv_text,
+            top_k=request.top_k
+        )
+        
+        # Formater les résultats
+        matches = []
+        for job, score in results:
+            matches.append({
+                "job_id": job['job_id'],
+                "title": job['title'],
+                "company": job['company'],
+                "location": job['location'],
+                "remote": job.get('remote_ok', False),
+                "experience_required": job['experience'],
+                "score": float(score) * 100,
+                "description": job['description'][:200] + "..."
+            })
+        
+        return {
+            "cv_summary": request.cv_text[:200] + "...",
+            "cv_skills_found": len(cv_skills),
+            "matches": matches,
+            "count": len(matches)
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur lors du matching: {str(e)}"
         )
 
 # ============================================================================
