@@ -21,8 +21,9 @@ services:
     
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      #Initialiser la BDD au premier démarrage
+      # Initialiser la BDD au premier démarrage
       - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    
     ports:
       - "5432:5432"
     
@@ -34,7 +35,6 @@ services:
     
     networks:
       - ai-coach-network
-      
 
   # --------------------------------------------------------------------------
   # SERVICE 2 : API FASTAPI
@@ -47,7 +47,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 8G  # Limite à 8GB
+          memory: 8G
         reservations:
           memory: 4G 
 
@@ -63,10 +63,12 @@ services:
       GROQ_API_KEY: ${GROQ_API_KEY}
     
     volumes:
-      # Monter les données (pour éviter de reconstruire l'image à chaque modif)
-      - ./data:/app/data
-      - ./models:/app/models
-      - ./outputs:/app/outputs
+      # ✅ MODIFICATION : Monter TOUT le code source pour éviter rebuild
+      - ./src:/app/src                    # Code Python modifiable à chaud
+      - ./data:/app/data                  # Données (jobs, skills)
+      - ./models:/app/models              # Modèles ML (si besoin)
+      - ./outputs:/app/outputs            # Résultats
+      - ./.env:/app/.env                  # Variables d'environnement
     
     ports:
       - "8000:8000"
@@ -84,6 +86,9 @@ services:
     
     networks:
       - ai-coach-network
+    
+    # ✅ NOUVEAU : Commande avec --reload pour auto-restart
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
 
   # --------------------------------------------------------------------------
   # SERVICE 3 : STREAMLIT FRONTEND
@@ -96,7 +101,7 @@ services:
     environment:
       RUNNING_IN_DOCKER: "true"
       # URL de l'API (nom du service Docker)
-      API_BASE_URL: http://ai-career-coach-api:8000  # ✅ Nom du service Docker
+      API_BASE_URL: http://ai-career-coach-api:8000
     
     volumes:
       # Monter uniquement les fichiers Streamlit

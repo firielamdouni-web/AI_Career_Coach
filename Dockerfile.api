@@ -5,7 +5,7 @@
 FROM python:3.10-slim
 
 # ✅ TOKEN HUGGING FACE 
-ENV HF_TOKEN=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
+ENV HF_TOKEN=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
 
 # Définir le répertoire de travail dans le conteneur
 WORKDIR /app
@@ -28,6 +28,16 @@ COPY requirements.txt .
 # Installer les dépendances Python
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
+
+# ============================================================================
+# ✅ NOUVEAU : PRÉ-TÉLÉCHARGER LE MODÈLE SENTENCE-TRANSFORMERS
+# ============================================================================
+# Télécharger le modèle HuggingFace AVANT de copier le code
+# Cela évite l'erreur 401 lors du runtime
+RUN python -c "from sentence_transformers import SentenceTransformer; \
+    print('⏳ Téléchargement du modèle all-mpnet-base-v2...'); \
+    model = SentenceTransformer('all-mpnet-base-v2'); \
+    print('✅ Modèle all-mpnet-base-v2 téléchargé et mis en cache')"
 
 # Télécharger le modèle spaCy français (si nécessaire)
 RUN python -m spacy download fr_core_news_lg || true
