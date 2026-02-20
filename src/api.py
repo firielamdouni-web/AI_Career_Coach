@@ -15,6 +15,8 @@ import json
 import logging
 from datetime import datetime
 import joblib
+import mlflow
+import mlflow.sklearn
 
 # ============================================================================
 # ✅ CHARGEMENT DES VARIABLES D'ENVIRONNEMENT (AVANT TOUS LES IMPORTS)
@@ -46,6 +48,18 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# CONFIGURATION MLFLOW
+# ============================================================================
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+MLFLOW_EXPERIMENT_NAME = "ai-career-coach-production"
+
+# Initialiser MLflow
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+
+logger.info(f"✅ MLflow configuré : {MLFLOW_TRACKING_URI}")
 
 # ============================================================================
 # CONFIGURATION DE L'APPLICATION
@@ -409,6 +423,7 @@ async def recommend_jobs(
     """
     Obtenir des recommandations d'emploi basées sur un CV
     SCORING BASÉ SUR APPROCHE 4 : Coverage + Quality
+    ✅ INTÉGRATION MLFLOW : Tracking automatique des runs
     """
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -416,20 +431,26 @@ async def recommend_jobs(
     tmp_file_path = None
     
     try:
-        # Sauvegarder temporairement le fichier
+        # ====================================================================
+        # ÉTAPE 1 : SAUVEGARDE TEMPORAIRE DU FICHIER
+        # ====================================================================
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             content = await file.read()
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Parser le CV
+        # ====================================================================
+        # ÉTAPE 2 : PARSING DU CV
+        # ====================================================================
         parser = get_cv_parser()
         cv_text = parser.parse(tmp_file_path)
         
         if not cv_text or len(cv_text.strip()) < 50:
             raise HTTPException(status_code=400, detail="Le CV est vide ou illisible")
         
-        # Extraire les compétences
+        # ====================================================================
+        # ÉTAPE 3 : EXTRACTION DES COMPÉTENCES
+        # ====================================================================
         extractor = get_skills_extractor()
         skills_result = extractor.extract_from_cv(cv_text)
         technical_skills = skills_result['technical_skills']
@@ -444,142 +465,277 @@ async def recommend_jobs(
         
         logger.info(f"✅ CV analysé : {len(cv_skills)} compétences détectées")
         
-        # Obtenir les candidats
-        if use_faiss:
-            vector_store = get_vector_store()
-            faiss_candidates = vector_store.search(
-                cv_skills=cv_skills,
-                cv_text=cv_text[:500],
-                top_k=min(50, vector_store.index.ntotal)
-            )
-            candidate_jobs = [job for job, _ in faiss_candidates]
-            logger.info(f"✅ FAISS: {len(candidate_jobs)} candidats pré-filtrés")
-        else:
-            dataset = get_jobs_dataset()
-            candidate_jobs = dataset['jobs']
-        
-        # Scoring avec JobMatcher
-        matcher = get_job_matcher()
-        detailed_results = []
-        
-        for job in candidate_jobs:
-            detailed_score = matcher.calculate_job_match_score(cv_skills, job)
-            
-            # Extraire les skills matchées
-            matching_skills = []
-            matched_job_skills = set()
-            
-            for match in detailed_score['skills_details']['top_matches']:
-                skill_name = match['cv_skill']
-                if skill_name not in matching_skills:
-                    matching_skills.append(skill_name)
-                matched_job_skills.add(match['job_skill'])
-            
-            # Calculer les skills manquantes
-            all_job_skills = matcher.extract_job_skills(job)
-            missing_skills = [
-                skill for skill in all_job_skills 
-                if skill not in matched_job_skills
-            ]
-            
-            detailed_results.append({
-                'job_id': job['job_id'],
-                'title': job['title'],
-                'company': job['company'],
-                'location': job['location'],
-                'remote_ok': job.get('remote_ok', False),
-                'experience': job['experience'],
-                'score': detailed_score['score'],
-                'skills_details': detailed_score['skills_details'],
-                'matching_skills': matching_skills,
-                'missing_skills': missing_skills
-            })
-        
-        # Tri par score
-        detailed_results.sort(key=lambda x: x['score'], reverse=True)
-        
-        # Filtrer par score minimum et top_n
-        filtered_jobs = [
-            job for job in detailed_results 
-            if job['score'] >= min_score
-        ][:top_n]
-        
-        logger.info(f"✅ {len(filtered_jobs)} recommandations générées (score ≥ {min_score})")
-        
         # ====================================================================
-        # SAUVEGARDE DANS POSTGRESQL
+        # 🎯 MLFLOW : DÉMARRAGE DU RUN
         # ====================================================================
-        try:
-            db = get_db_manager()
+        with mlflow.start_run(run_name=f"recommend_{file.filename}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
             
-            # Sauvegarder l'analyse du CV
-            cv_analysis_id = db.save_cv_analysis(
-                cv_filename=file.filename,
-                cv_text=cv_text,
-                technical_skills=technical_skills,
-                soft_skills=soft_skills,
-                user_id=None
-            )
+            # Log des paramètres de la requête
+            mlflow.log_param("cv_filename", file.filename)
+            mlflow.log_param("top_n", top_n)
+            mlflow.log_param("min_score", min_score)
+            mlflow.log_param("use_faiss", use_faiss)
+            mlflow.log_param("cv_text_length", len(cv_text))
+            mlflow.log_param("cv_skills_count", len(cv_skills))
+            mlflow.log_param("technical_skills_count", len(technical_skills))
+            mlflow.log_param("soft_skills_count", len(soft_skills))
             
-            logger.info(f"✅ CV analysis sauvegardé en BDD (ID: {cv_analysis_id})")
-            
-            # Sauvegarder les recommandations
-            for job in filtered_jobs:
-                db.save_job_recommendation(
-                    cv_analysis_id=cv_analysis_id,
-                    job_id=job['job_id'],
-                    job_title=job['title'],
-                    company=job['company'],
-                    score=job['score'],
-                    skills_match=job['score'],
-                    experience_match=0,
-                    location_match=0,
-                    competition_factor=0,
-                    matching_skills=job['matching_skills']
+            # ====================================================================
+            # ÉTAPE 4 : OBTENIR LES CANDIDATS (FAISS OU COMPLET)
+            # ====================================================================
+            if use_faiss:
+                vector_store = get_vector_store()
+                faiss_candidates = vector_store.search(
+                    cv_skills=cv_skills,
+                    cv_text=cv_text[:500],
+                    top_k=min(50, vector_store.index.ntotal)
                 )
+                candidate_jobs = [job for job, _ in faiss_candidates]
+                logger.info(f"✅ FAISS: {len(candidate_jobs)} candidats pré-filtrés")
+                mlflow.log_metric("faiss_candidates_count", len(candidate_jobs))
+            else:
+                dataset = get_jobs_dataset()
+                candidate_jobs = dataset['jobs']
+                mlflow.log_metric("total_jobs_in_dataset", len(candidate_jobs))
             
-            logger.info(f"✅ {len(filtered_jobs)} recommandations sauvegardées en BDD")
+            # ====================================================================
+            # ÉTAPE 5 : SCORING AVEC JOBMATCHER (APPROCHE 4)
+            # ====================================================================
+            matcher = get_job_matcher()
+            detailed_results = []
             
-        except Exception as e:
-            logger.error(f"⚠️ Erreur sauvegarde PostgreSQL (non bloquant): {e}")
-        
-        # ====================================================================
-        # FORMATER LA RÉPONSE
-        # ====================================================================
-        recommendations = []
-        for job in filtered_jobs:
-            recommendations.append({
-                "job_id": job['job_id'],
-                "title": job['title'],
-                "company": job['company'],
-                "location": job['location'],
-                "remote": job['remote_ok'],
-                "experience_required": job['experience'],
-                "score": job['score'],
-                "skills_match": job['score'],
-                "experience_match": 0,
-                "location_match": 0,
-                "competition_factor": 0,
-                "matching_skills": job['matching_skills'],
-                "missing_skills": job['missing_skills']
-            })
-        
-        return {
-            "recommendations": recommendations,
-            "total_jobs_analyzed": len(candidate_jobs),
-            "cv_skills_count": len(cv_skills),
-            "faiss_used": use_faiss
-        }
+            for job in candidate_jobs:
+                detailed_score = matcher.calculate_job_match_score(cv_skills, job)
+                
+                # Extraire les skills matchées
+                matching_skills = []
+                matched_job_skills = set()
+                
+                for match in detailed_score['skills_details']['top_matches']:
+                    skill_name = match['cv_skill']
+                    if skill_name not in matching_skills:
+                        matching_skills.append(skill_name)
+                    matched_job_skills.add(match['job_skill'])
+                
+                # Calculer les skills manquantes
+                all_job_skills = matcher.extract_job_skills(job)
+                missing_skills = [
+                    skill for skill in all_job_skills 
+                    if skill not in matched_job_skills
+                ]
+                
+                detailed_results.append({
+                    'job_id': job['job_id'],
+                    'title': job['title'],
+                    'company': job['company'],
+                    'location': job['location'],
+                    'remote_ok': job.get('remote_ok', False),
+                    'experience': job['experience'],
+                    'score': detailed_score['score'],
+                    'skills_details': detailed_score['skills_details'],
+                    'matching_skills': matching_skills,
+                    'missing_skills': missing_skills
+                })
+            
+            # ====================================================================
+            # ÉTAPE 6 : TRI ET FILTRAGE
+            # ====================================================================
+            detailed_results.sort(key=lambda x: x['score'], reverse=True)
+            
+            filtered_jobs = [
+                job for job in detailed_results 
+                if job['score'] >= min_score
+            ][:top_n]
+            
+            logger.info(f"✅ {len(filtered_jobs)} recommandations générées (score ≥ {min_score})")
+            
+            # ====================================================================
+            # 🎯 MLFLOW : LOG DES MÉTRIQUES DE SCORING
+            # ====================================================================
+            mlflow.log_metric("total_jobs_analyzed", len(candidate_jobs))
+            mlflow.log_metric("jobs_after_filtering", len(filtered_jobs))
+            
+            if filtered_jobs:
+                scores = [job['score'] for job in filtered_jobs]
+                mlflow.log_metric("top1_score", scores[0])
+                mlflow.log_metric("avg_score", sum(scores) / len(scores))
+                mlflow.log_metric("min_score_returned", scores[-1])
+                mlflow.log_metric("max_score", max(scores))
+                mlflow.log_metric("median_score", sorted(scores)[len(scores)//2])
+                
+                # Log distribution des scores
+                mlflow.log_metric("scores_above_80", sum(1 for s in scores if s >= 80))
+                mlflow.log_metric("scores_60_to_80", sum(1 for s in scores if 60 <= s < 80))
+                mlflow.log_metric("scores_below_60", sum(1 for s in scores if s < 60))
+            else:
+                mlflow.log_metric("top1_score", 0.0)
+                mlflow.log_metric("avg_score", 0.0)
+                logger.warning(f"⚠️ Aucune recommandation avec score ≥ {min_score}")
+            
+            # ====================================================================
+            # 🎯 MLFLOW : SAUVEGARDE DES ARTEFACTS
+            # ====================================================================
+            try:
+                # Créer un fichier JSON avec les résultats complets
+                artifacts_data = {
+                    "cv_filename": file.filename,
+                    "timestamp": datetime.now().isoformat(),
+                    "cv_skills": {
+                        "technical": technical_skills,
+                        "soft": soft_skills,
+                        "total": len(cv_skills)
+                    },
+                    "recommendations": [
+                        {
+                            "rank": idx + 1,
+                            "job_id": job['job_id'],
+                            "title": job['title'],
+                            "company": job['company'],
+                            "score": round(job['score'], 2),
+                            "matching_skills": job['matching_skills'],
+                            "missing_skills": job['missing_skills']
+                        }
+                        for idx, job in enumerate(filtered_jobs)
+                    ],
+                    "parameters": {
+                        "top_n": top_n,
+                        "min_score": min_score,
+                        "use_faiss": use_faiss
+                    }
+                }
+                
+                # Sauvegarder dans un fichier temporaire
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    json.dump(artifacts_data, f, indent=2, ensure_ascii=False)
+                    artifact_path = f.name
+                
+                # Logger l'artifact dans MLflow
+                mlflow.log_artifact(artifact_path, "recommendations")
+                
+                # Nettoyer le fichier temporaire
+                os.unlink(artifact_path)
+                
+                logger.info("✅ Artefacts MLflow sauvegardés")
+                
+            except Exception as e:
+                logger.error(f"⚠️ Erreur sauvegarde artefacts MLflow : {e}")
+            
+            # ====================================================================
+            # ÉTAPE 7 : SAUVEGARDE DANS POSTGRESQL
+            # ====================================================================
+            try:
+                db = get_db_manager()
+                
+                # Sauvegarder l'analyse du CV
+                cv_analysis_id = db.save_cv_analysis(
+                    cv_filename=file.filename,
+                    cv_text=cv_text,
+                    technical_skills=technical_skills,
+                    soft_skills=soft_skills,
+                    user_id=None
+                )
+                
+                logger.info(f"✅ CV analysis sauvegardé en BDD (ID: {cv_analysis_id})")
+                
+                # Log de l'ID dans MLflow
+                mlflow.log_param("cv_analysis_id", cv_analysis_id)
+                
+                # Sauvegarder les recommandations
+                for job in filtered_jobs:
+                    db.save_job_recommendation(
+                        cv_analysis_id=cv_analysis_id,
+                        job_id=job['job_id'],
+                        job_title=job['title'],
+                        company=job['company'],
+                        score=job['score'],
+                        skills_match=job['score'],
+                        experience_match=0,
+                        location_match=0,
+                        competition_factor=0,
+                        matching_skills=job['matching_skills']
+                    )
+                
+                logger.info(f"✅ {len(filtered_jobs)} recommandations sauvegardées en BDD")
+                
+            except Exception as e:
+                logger.error(f"⚠️ Erreur sauvegarde PostgreSQL (non bloquant): {e}")
+            
+            # ====================================================================
+            # ÉTAPE 8 : FORMATER LA RÉPONSE
+            # ====================================================================
+            recommendations = []
+            for job in filtered_jobs:
+                recommendations.append({
+                    "job_id": job['job_id'],
+                    "title": job['title'],
+                    "company": job['company'],
+                    "location": job['location'],
+                    "remote": job['remote_ok'],
+                    "experience_required": job['experience'],
+                    "score": job['score'],
+                    "skills_match": job['score'],
+                    "experience_match": 0,
+                    "location_match": 0,
+                    "competition_factor": 0,
+                    "matching_skills": job['matching_skills'],
+                    "missing_skills": job['missing_skills']
+                })
+            
+            # ====================================================================
+            # 🎯 MLFLOW : TAG DU RUN
+            # ====================================================================
+            mlflow.set_tag("cv_filename", file.filename)
+            mlflow.set_tag("success", "true")
+            mlflow.set_tag("environment", "production")
+            
+            logger.info(f"✅ MLflow run complété pour {file.filename}")
+            
+            # ====================================================================
+            # RETOUR DE LA RÉPONSE
+            # ====================================================================
+            return {
+                "recommendations": recommendations,
+                "total_jobs_analyzed": len(candidate_jobs),
+                "cv_skills_count": len(cv_skills),
+                "faiss_used": use_faiss
+            }
         
     except HTTPException:
+        # ====================================================================
+        # 🎯 MLFLOW : LOG DES ERREURS
+        # ====================================================================
+        try:
+            with mlflow.start_run(run_name=f"error_{file.filename}_{datetime.now().strftime('%H%M%S')}"):
+                mlflow.set_tag("success", "false")
+                mlflow.set_tag("error_type", "HTTPException")
+                mlflow.log_param("cv_filename", file.filename)
+        except:
+            pass
         raise
+        
     except Exception as e:
+        # ====================================================================
+        # 🎯 MLFLOW : LOG DES ERREURS SYSTÈME
+        # ====================================================================
         logger.error(f"Erreur génération recommandations: {e}")
+        try:
+            with mlflow.start_run(run_name=f"error_{file.filename}_{datetime.now().strftime('%H%M%S')}"):
+                mlflow.set_tag("success", "false")
+                mlflow.set_tag("error_type", type(e).__name__)
+                mlflow.log_param("cv_filename", file.filename)
+                mlflow.log_param("error_message", str(e))
+        except:
+            pass
+        
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la génération des recommandations: {str(e)}"
         )
+        
     finally:
+        # ====================================================================
+        # NETTOYAGE DU FICHIER TEMPORAIRE
+        # ====================================================================
         if tmp_file_path and os.path.exists(tmp_file_path):
             try:
                 os.unlink(tmp_file_path)

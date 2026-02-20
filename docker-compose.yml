@@ -61,7 +61,8 @@ services:
       
       # Configuration Groq (pour simulation entretien)
       GROQ_API_KEY: ${GROQ_API_KEY}
-    
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      
     volumes:
       # ✅ MODIFICATION : Monter TOUT le code source pour éviter rebuild
       - ./src:/app/src                    # Code Python modifiable à chaud
@@ -117,13 +118,54 @@ services:
     networks:
       - ai-coach-network
 
+  # --------------------------------------------------------------------------
+  # SERVICE 4 : MLFLOW TRACKING SERVER
+  # --------------------------------------------------------------------------
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    container_name: ai-career-coach-mlflow
+    restart: unless-stopped
+    
+    environment:
+      # Configuration MLflow
+      MLFLOW_BACKEND_STORE_URI: sqlite:///mlflow/mlflow.db
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+    
+    volumes:
+      # Stockage persistant pour runs et modèles
+      - mlflow_data:/mlflow
+      # Partage des modèles avec l'API
+      - ./mlops:/app/mlops
+      - ./models:/app/models
+    
+    ports:
+      - "5000:5000"
+    
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - ai-coach-network
+
 # ============================================================================
 # DÉFINITION DES VOLUMES (STOCKAGE PERSISTANT)
 # ============================================================================
 volumes:
   postgres_data:
     driver: local
-
+  mlflow_data:             
+    driver: local 
 # ============================================================================
 # DÉFINITION DES RÉSEAUX (COMMUNICATION INTER-CONTENEURS)
 # ============================================================================
