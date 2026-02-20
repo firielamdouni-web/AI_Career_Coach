@@ -98,3 +98,6 @@ cv_text_*.txt
 .env
 .env.local
 .env.production
+
+# docs
+docs/
