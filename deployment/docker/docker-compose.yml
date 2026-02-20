@@ -22,7 +22,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Initialiser la BDD au premier démarrage
-      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ../scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
     
     ports:
       - "5432:5432"
@@ -65,11 +65,11 @@ services:
       
     volumes:
       # ✅ MODIFICATION : Monter TOUT le code source pour éviter rebuild
-      - ./src:/app/src                    # Code Python modifiable à chaud
-      - ./data:/app/data                  # Données (jobs, skills)
-      - ./models:/app/models              # Modèles ML (si besoin)
-      - ./outputs:/app/outputs            # Résultats
-      - ./.env:/app/.env                  # Variables d'environnement
+      - ../../src:/app/src                 # Code Python modifiable à chaud
+      - ../../data:/app/data               # Données (jobs, skills)
+      - ../../models:/app/models            # Modèles ML (si besoin)
+      - ../../outputs:/app/outputs         # Résultats
+      - ../../.env:/app/.env                  # Variables d'environnement
     
     ports:
       - "8000:8000"
@@ -106,8 +106,8 @@ services:
     
     volumes:
       # Monter uniquement les fichiers Streamlit
-      - ./app.py:/app/app.py
-      - ./pages:/app/pages
+      - ../../app.py:/app/app.py
+      - ../../pages:/app/pages
     
     ports:
       - "8501:8501"
@@ -135,8 +135,8 @@ services:
       # Stockage persistant pour runs et modèles
       - mlflow_data:/mlflow
       # Partage des modèles avec l'API
-      - ./mlops:/app/mlops
-      - ./models:/app/models
+      - ../../mlops:/app/mlops
+      - ../../models:/app/models
     
     ports:
       - "5000:5000"
