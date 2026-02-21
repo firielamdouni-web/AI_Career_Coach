@@ -2,50 +2,47 @@
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
-.Python
-*.so
-*.egg
-*.egg-info/
-dist/
-build/
-
-# Environments
-.env
-.venv
 env/
 venv/
-ENV/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
+.venv/
 
 # Git
 .git/
 .github/
 .gitignore
 
-# Jupyter
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Jupyter (NE PAS copier les notebooks!)
 notebooks/
 *.ipynb
 .ipynb_checkpoints/
 
+# Données brutes
+data/faiss_index/
+data/**/*.pdf
+mlops/mlflow_tracking/
+mlops/mlflow_models/
+mlartifacts/
+
 # Tests
 tests/
-pytest_cache/
+.pytest_cache/
 .coverage
 
-# MLflow trash
-mlops/mlflow_tracking/.trash/
-
-# Docker
-docker-compose*.yml
-*.md
-
 # Logs
-*.log
 logs/
+*.log
+
+# Docs
+README.md
+LICENSE
+.env.example
+
+# Cache
+.cache/
+*.pkg
+wheels/

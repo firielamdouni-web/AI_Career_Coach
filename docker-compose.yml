@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # PostgreSQL - optionnel pour ce test
   postgres:
     image: postgres:15-alpine
     container_name: pfe-postgres
@@ -16,25 +15,65 @@ services:
     networks:
       - pfe-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pfe_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Streamlit - TEST
+  # ✅ API avec base.txt + api.txt
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: pfe-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+    networks:
+      - pfe-network
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: '1'
+      DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  # ✅ Streamlit avec base.txt + frontend.txt
   streamlit:
     build:
       context: .
       dockerfile: docker/streamlit.Dockerfile
     container_name: pfe-streamlit
+    depends_on:
+      api:
+        condition: service_healthy
     ports:
       - "8501:8501"
     volumes:
-      - ./pages:/app/pages
-      - ./app.py:/app/app.py
-      - ./src:/app/src
-      - ./data:/app/data
+      - ./pages:/app/pages:ro
+      - ./app.py:/app/app.py:ro
+      - ./src:/app/src:ro
+      - ./data:/app/data:ro
     networks:
       - pfe-network
+    env_file:
+      - .env
     environment:
       PYTHONUNBUFFERED: '1'
-      API_BASE_URL: http://localhost:8000  # ⚠️ API pas dispo = OK pour test
+      API_BASE_URL: http://api:8000
     restart: unless-stopped
 
 networks:

@@ -1,10 +1,13 @@
 # Dépendances communes à tous les services
 
-# Configuration
+# Core
 python-dotenv==1.0.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
+pydantic>=2.10.0
 
-# Data manipulation
-pandas==2.1.3
-numpy==1.26.2
+# Data
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Utilities
+requests>=2.31.0
+tqdm==4.66.1
