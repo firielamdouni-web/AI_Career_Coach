@@ -219,6 +219,22 @@ class AnswerEvaluationResponse(BaseModel):
     points_amelioration: List[str]
     recommandations: List[str]
 
+class MLPredictRequest(BaseModel):
+    """Requête de prédiction ML directe"""
+    cv_technical_skills: List[str] = Field(..., description="Skills techniques du CV")
+    cv_soft_skills: List[str] = Field(default=[], description="Soft skills du CV")
+    job_id: str = Field(..., description="ID de l'offre d'emploi")
+
+class MLPredictResponse(BaseModel):
+    """Réponse de prédiction ML"""
+    job_id: str
+    job_title: str
+    ml_label: str
+    ml_score: float
+    ml_probabilities: Dict
+    features_used: Dict
+    model_info: Dict
+
 # ============================================================================
 # ENDPOINTS
 # ============================================================================
@@ -869,6 +885,118 @@ async def evaluate_answer(request: AnswerEvaluationRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Erreur évaluation : {str(e)}"
+        )
+
+@app.post("/api/v1/ml-predict", response_model=MLPredictResponse, tags=["ML"])
+async def ml_predict(request: MLPredictRequest):
+    """
+    🤖 Prédiction directe avec le modèle XGBoost
+    
+    **Sans upload de CV PDF** — utilise directement les skills fournis.
+    
+    **Workflow:**
+    1. Récupération de l'offre d'emploi via job_id
+    2. Calcul des 15 features ML
+    3. Prédiction XGBoost (No Fit / Partial Fit / Perfect Fit)
+    
+    Args:
+        cv_technical_skills: Skills techniques du CV
+        cv_soft_skills: Soft skills du CV
+        job_id: ID de l'offre ciblée
+        
+    Returns:
+        Prédiction ML avec probabilités et features utilisées
+    """
+    try:
+        # 1. Vérifier que le modèle ML est chargé
+        ml_predictor = get_ml_predictor()
+        if not ml_predictor.is_loaded:
+            raise HTTPException(
+                status_code=503,
+                detail="Modèle ML non disponible. Lance : python mlops/train_and_log.py"
+            )
+
+        # 2. Récupérer l'offre d'emploi
+        dataset = get_jobs_dataset()
+        job = next(
+            (j for j in dataset['jobs'] if j['job_id'] == request.job_id),
+            None
+        )
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Offre '{request.job_id}' introuvable"
+            )
+
+        # 3. Préparer les skills CV
+        cv_skills = request.cv_technical_skills + request.cv_soft_skills
+        if not cv_skills:
+            raise HTTPException(
+                status_code=400,
+                detail="Au moins une compétence est requise"
+            )
+
+        # 4. Calculer le matching avec JobMatcher (pour skills_details)
+        matcher = get_job_matcher()
+        detailed_score = matcher.calculate_job_match_score(cv_skills, job)
+        all_job_skills = matcher.extract_job_skills(job)
+
+        # 5. Séparer skills techniques et soft du job
+        known_technical = set(s.lower() for s in matcher.skills_db.get('technical_skills', []))
+        known_soft = set(s.lower() for s in matcher.skills_db.get('soft_skills', []))
+
+        job_technical_skills = [s for s in all_job_skills if s.lower() in known_technical]
+        job_soft_skills = [s for s in all_job_skills if s.lower() in known_soft]
+        categorized = set(job_technical_skills + job_soft_skills)
+        job_technical_skills += [s for s in all_job_skills if s not in categorized]
+
+        # 6. Texte brut du job
+        job_raw_text = " ".join([
+            job.get('title', ''),
+            job.get('description', ''),
+            " ".join(job.get('requirements', [])),
+            " ".join(job.get('nice_to_have', []))
+        ]).strip()
+
+        # 7. Texte brut du CV (depuis les skills)
+        cv_raw_text = " ".join(cv_skills)
+
+        # 8. Calculer les features ML
+        ml_features = ml_predictor.compute_features(
+            cv_technical_skills=request.cv_technical_skills,
+            cv_soft_skills=request.cv_soft_skills,
+            job_technical_skills=job_technical_skills,
+            job_soft_skills=job_soft_skills,
+            skills_details=detailed_score['skills_details'],
+            cv_raw_text=cv_raw_text,
+            job_raw_text=job_raw_text,
+            sentence_model=matcher.model
+        )
+
+        # 9. Prédiction ML
+        ml_result = ml_predictor.predict(ml_features)
+
+        return {
+            "job_id": request.job_id,
+            "job_title": job['title'],
+            "ml_label": ml_result['ml_label'],
+            "ml_score": ml_result['ml_score'],
+            "ml_probabilities": ml_result['ml_probabilities'],
+            "features_used": ml_features,
+            "model_info": {
+                "model_type": "XGBoost Classifier",
+                "accuracy": "70%",
+                "classes": ["No Fit", "Partial Fit", "Perfect Fit"],
+                "nb_features": 15
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur prédiction ML : {str(e)}"
         )
 
 # ============================================================================
