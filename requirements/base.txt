@@ -1,0 +1,13 @@
+# Dépendances communes à tous les services
+
+# Core
+python-dotenv==1.0.0
+pydantic>=2.10.0
+
+# Data
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Utilities
+requests>=2.31.0
+tqdm==4.66.1

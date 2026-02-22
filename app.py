@@ -9,12 +9,13 @@ import requests
 import json
 from pathlib import Path
 from datetime import datetime
+import os
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-API_BASE_URL = "http://localhost:8000"  # URL de l'API FastAPI
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")  # URL de l'API FastAPI
 
 st.set_page_config(
     page_title="AI Career Coach",
