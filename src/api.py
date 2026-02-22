@@ -14,6 +14,7 @@ import os
 import json
 from .vector_store import JobVectorStore
 from .interview_simulator import InterviewSimulator, get_interview_simulator
+from src.database import get_db_manager
 
 # Import des modules locaux
 from .cv_parser import CVParser
@@ -474,19 +475,44 @@ async def recommend_jobs(
                 "location": job['location'],
                 "remote": job['remote_ok'],
                 "experience_required": job['experience'],
-                "score": job['score'],  # ✅ Score global unique
-                "skills_match": job['score'],  # ✅ Même valeur (compatibilité frontend)
+                "score": float(job['score']),  # ✅ Convertir en float Python
+                "skills_match": float(job['score']),  # ✅ Convertir en float Python
                 "experience_match": 0,  # Deprecated (compatibilité)
                 "location_match": 0,  # Deprecated (compatibilité)
                 "competition_factor": 0,  # Deprecated (compatibilité)
                 "matching_skills": job['matching_skills'],  
                 "missing_skills": job['missing_skills']
             })
+
+        # 1️⃣ Sauvegarder l'analyse CV
+        db = get_db_manager()
+        cv_id = db.save_cv_analysis(
+            cv_filename=file.filename,
+            cv_text=cv_text,  # Texte extrait du CV
+            technical_skills=technical_skills,  # Liste des compétences
+            soft_skills=soft_skills,
+            user_id=1  # anonymous
+        )
+        
+        # 2️⃣ Sauvegarder chaque recommandation
+        for job in filtered_jobs:
+            db.save_job_recommendation(
+                cv_analysis_id=cv_id,
+                job_id=job['job_id'],
+                job_title=job['title'],
+                company=job['company'],
+                score=float(job['score']),  # ✅ AJOUTER float()
+                coverage=float(job.get('skills_details', {}).get('coverage', 0)),  # ✅ AJOUTER float()
+                quality=float(job.get('skills_details', {}).get('quality', 0)),  # ✅ AJOUTER float()
+                matching_skills=job.get('matching_skills', []),
+                missing_skills=job.get('missing_skills', [])
+            )
         
         return {
             "recommendations": recommendations,
             "total_jobs_analyzed": len(candidate_jobs),
-            "cv_skills_count": len(cv_skills)
+            "cv_skills_count": len(cv_skills),
+            "database_id": cv_id
         }
         
     except HTTPException:
