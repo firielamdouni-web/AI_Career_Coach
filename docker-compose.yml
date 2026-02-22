@@ -17,7 +17,7 @@ services:
       - pfe-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pfe_user"]
+      test: ["CMD-SHELL", "psql -U pfe_user -d pfe_db -c 'SELECT 1' > /dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -75,6 +75,7 @@ services:
     environment:
       PYTHONUNBUFFERED: '1'
       API_BASE_URL: http://api:8000
+      DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
     restart: unless-stopped
 
 networks:
