@@ -22,7 +22,31 @@ services:
       timeout: 5s
       retries: 5
 
-  # ✅ API avec base.txt + api.txt
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    container_name: pfe-mlflow
+    restart: unless-stopped
+    
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:////tmp/mlflow/mlruns.db  # ✅ CHANGÉ
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tmp/mlflow/artifacts  # ✅ CHANGÉ
+    
+    volumes:
+      - mlflow_data:/tmp/mlflow  # ✅ CHANGÉ
+    
+    ports:
+      - "5000:5000"
+    
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////tmp/mlflow/mlruns.db
+      --default-artifact-root /tmp/mlflow/artifacts
+    
+    networks:
+      - pfe-network
+
   api:
     build:
       context: .
@@ -36,7 +60,9 @@ services:
     volumes:
       - ./src:/app/src:ro
       - ./data:/app/data:ro
-      - ./models:/app/models:ro
+      - ./models:/app/models
+      - ./mlops:/app/mlops:ro
+      - mlflow_data:/tmp/mlflow
     networks:
       - pfe-network
     env_file:
@@ -44,6 +70,7 @@ services:
     environment:
       PYTHONUNBUFFERED: '1'
       DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -52,7 +79,6 @@ services:
       retries: 3
       start_period: 120s
 
-  # ✅ Streamlit avec base.txt + frontend.txt
   streamlit:
     build:
       context: .
@@ -76,6 +102,7 @@ services:
       PYTHONUNBUFFERED: '1'
       API_BASE_URL: http://api:8000
       DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
 
 networks:
@@ -84,4 +111,6 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  mlflow_data:             
     driver: local
