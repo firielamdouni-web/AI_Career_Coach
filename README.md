@@ -20,25 +20,29 @@ AI_Career_Coach/
 │
 ├── 📁 data/                               # Données et artifacts
 │   ├── 📁 jobs/                           # Offres d'emploi et embeddings
-│   │   ├── jobs_dataset.json              # 25 offres d'emploi (Data Science/ML)
-│   │   ├── jobs_faiss.index                # Index FAISS pour recherche vectorielle
-│   │   └── jobs_embeddings.pkl             # Embeddings pré-calculés (768-dim)
+│   │   └── jobs_dataset.json              # 25 offres d'emploi (Data Science/ML)
 │   │
 │   ├── 📁 resume_fit_job/                   # Dataset CV-Job
 │   │   ├── 📁 processed/                    # Données nettoyées
 │   │   │   └── v2_dataset_resume_job_fit_processed.xlsx  # Dataset nettoyé (4,524 samples)
 │   │   └── 📁 raw/                          # Données brutes
-│   │       └── dataset_resume_job_fit.xlsx  # Dataset brut (6,241 samples)
+│   │       └── huggingface_resume_job_fit_RAW.xlsx  # Dataset brut (6,241 samples)
 │   │
 │   ├── skills_reference.json                # Compétences techniques + soft skills
 │   └── RESUME_*.pdf                         # CVs de test
 │
+├── 📁 db/ 
+│   ├── 📁 init/                         
+│       └── init_db.sql                     # Schéma PostgreSQL
+│
+├── 📁 docker/                             # Dockerfiles
+│   ├── api.Dockerfile                      # Image Docker API FastAPI
+│   └── streamlit.Dockerfile                # Image Docker Streamlit
+│
 ├── 📁 mlops/                                # Pipeline MLOps
 │   ├── train_and_log.py                     # Entraînement + tracking MLflow
 │   ├── register_model.py                    # Enregistrement Model Registry
-│   ├── serve_model.py                       # Test de prédiction
-│   ├── 📁 mlflow_tracking/                   # Généré automatiquement (ignoré Git)
-│   └── 📁 mlflow_models/                     # Généré automatiquement (ignoré Git)
+│   └── serve_model.py                       # Test de prédiction
 │
 ├── 📁 models/                               # Modèles entraînés (metadata uniquement)
 │   └── classifier_clean_metadata.json       # Métadonnées du modèle XGBoost
@@ -61,429 +65,400 @@ AI_Career_Coach/
 │   ├── skills_extractor.py                  # Extraction compétences (spaCy + regex)
 │   ├── job_matcher.py                       # Matching sémantique (SentenceTransformer)
 │   ├── vector_store.py                      # Recherche vectorielle (FAISS)
+│   ├── database.py                          # Gestion PostgreSQL (SQLAlchemy)
 │   ├── interview_simulator.py               # Génération questions d'entretien
 │   └── compute_features_from_huggingface.py # Calcul features ML
 │
-├── 📁 tests/                                 # Tests unitaires (TODO)
+├── 📁 pages/                               # Pages Streamlit
+│   └── 1_Interview_Simulation.py           # Page simulation entretien
+│
+├── 📁 tests/                                 # Tests unitaires
 │   └── ...
+│
+├── 📁 requirements/ 
+│   ├── api.txt                                  # Dépendances API (FastAPI, Groq...)
+│   ├── frontend.txt                             # Dépendances Streamlit
+│   └── base.txt                                 # Dépendances communs
 │
 ├── app.py                                    # Dashboard Streamlit (frontend)
 ├── requirements.txt                          # Dépendances Python
+├── docker-compose.yml                        # Orchestration 4 services Docker
+├── .env.example                              # Template variables d'environnement
+├── .dockerignore                             # Fichiers exclus du build
 ├── .gitignore                                
 └── README.md                                
 ```
 
 ## 🚀 Quick Start
 
-### Lancer l'API
+### **Option 1 : Démarrage avec Docker (Recommandé)**
 
 ```bash
-
 # 1. Cloner le repo
-git clone https://github.com/Robert-ung/AI_Career_Coach.git
+git clone https://github.com/Robert-ung/AI_Career_Coach/tree/main
 cd AI_Career_Coach
 
-# 2. Créer l'environnement
+# 2. Configurer les variables d'environnement
+cp .env.example .env
+# Éditer .env avec vos valeurs et ajouter votre GROQ_API_KEY
+
+# 3. Lancer tous les services (PostgreSQL + API + Streamlit + MLflow)
+docker-compose up -d
+
+# 4. Vérifier que tout est UP
+docker-compose ps
+
+# 5. Entraîner et enregistrer le modèle
+docker-compose exec api python mlops/train_and_log.py
+docker-compose exec api python mlops/register_model.py
+
+# 6. Accéder aux interfaces
+# - API Swagger : http://localhost:8000/docs
+# - Streamlit UI : http://localhost:8501
+# - MLflow UI : http://localhost:5000
+```
+
+**Vérification rapide :**
+
+```bash
+# Health check API
+curl http://localhost:8000/health
+
+# Stats du système
+curl http://localhost:8000/api/v1/stats
+
+# Tester une recommandation
+curl -X POST "http://localhost:8000/api/v1/recommend-jobs" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/CV_exemple.pdf" \
+  -F "top_k=5"
+```
+
+**Arrêter les services :**
+
+```bash
+cd deployment/docker
+docker-compose down           # Arrêter sans supprimer les données
+docker-compose down -v        # Arrêter et supprimer les volumes (reset complet)
+```
+
+---
+
+### **Option 2 : Démarrage en local (Développement)**
+
+```bash
+# 1. Cloner le repo
+git clone https://github.com/firielamdouni-web/AI_Career_Coach.git
+cd AI_Career_Coach
+
+# 2. Créer l'environnement virtuel
 python -m venv env
 source env/bin/activate  # (ou env\Scripts\activate sur Windows)
 
 # 3. Installer les dépendances
 pip install -r requirements.txt
 
-# 4. Exécuter les scripts (qui généreront les fichiers localement)
+# 4. Télécharger le modèle spaCy
+python -m spacy download en_core_news_lg
+
+# 5. Configurer les variables d'environnement
+cp .env.example .env
+# Éditer .env et ajouter votre GROQ_API_KEY
+
+# 6. (Optionnel) Entraîner le modèle ML et tracker avec MLflow
 python mlops/train_and_log.py
 python mlops/register_model.py
 
-# 5. Lancer MLflow UI
-mlflow ui --backend-store-uri file:./mlops/mlflow_tracking
+# 7. Lancer MLflow UI (dans un terminal séparé)
+mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
+# Accéder à MLflow UI : http://localhost:5000
 
-Accéder à MLflow UI : http://127.0.0.1:5000
-
-# 6. Lancer l'API
+# 8. Lancer l'API FastAPI (dans un autre terminal)
 uvicorn src.api:app --reload --port 8000
+# Documentation interactive : http://localhost:8000/docs
 
-Documentation interactive : http://127.0.0.1:8000/docs
-
-# Tester l'API
-
-# Health Check
-curl http://127.0.0.1:8000/health
-
-# Stats
-curl http://127.0.0.1:8000/api/v1/stats
-
-# 7. Lancer le dashboard
+# 9. Lancer le dashboard Streamlit (dans un troisième terminal)
 streamlit run app.py
+# Interface utilisateur : http://localhost:8501
+```
 
-Interface utilisateur : http://localhost:8501
+---
 
-## 🎯 **Modèle Entraîné**
+## 🎯 **Architecture du Système**
+
+### **🐳 Architecture Docker (4-tiers)**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     UTILISATEUR / NAVIGATEUR                     │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ↓
+        ┌─────────────────────────────────────────┐
+        │     STREAMLIT FRONTEND (Port 8501)      │
+        │     • Upload CV                         │
+        │     • Affichage recommandations         │
+        │     • Simulation d'entretiens           │
+        └─────────────────────────────────────────┘
+                              │
+                              ↓ HTTP POST
+        ┌─────────────────────────────────────────┐
+        │     FASTAPI BACKEND (Port 8000)         │
+        │     • 8 endpoints REST                  │
+        │     • Extraction skills                 │
+        │     • Matching sémantique               │
+        │     • Scoring intelligent               │
+        └─────────────────────────────────────────┘
+                              │
+                ┌─────────────┴─────────────┐
+                ↓                           ↓
+    ┌───────────────────────┐   ┌───────────────────────┐
+    │  POSTGRESQL (5432)    │   │  MLFLOW SERVER (5000) │
+    │  • Stockage CVs       │   │  • Model Registry     │
+    │  • Historique matchs  │   │  • Tracking runs      │
+    │  • Logs candidats     │   │  • Artifacts ML       │
+    └───────────────────────┘   └───────────────────────┘
+```
+
+### **📡 Endpoints API Disponibles**
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| `GET` | `/health` | Statut de l'API |
+| `GET` | `/api/v1/stats` | Statistiques globales (jobs, skills) |
+| `POST` | `/api/v1/extract-skills` | Extraire compétences d'un CV PDF |
+| `POST` | `/api/v1/recommend-jobs` | Recommander des jobs (TOP-K) |
+| `GET` | `/api/v1/jobs` | Lister tous les jobs disponibles |
+| `GET` | `/api/v1/jobs/{job_id}` | Détails d'un job spécifique |
+| `POST` | `/api/v1/simulate-interview` | Générer questions d'entretien |
+| `POST` | `/api/v1/evaluate-answer` | Évaluer une réponse candidat |
+| `POST` | `/api/v1/search` | Recherche sémantique de jobs |
+| `POST` | `/api/v1/match` | Matching CV ↔ Job spécifique |
+
+---
+
+## 🎯 **Pipeline de Matching CV ↔ Jobs**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. UPLOAD CV (Streamlit)                                       │
+│     • Utilisateur upload CV PDF via interface                   │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  2. PARSING (cv_parser.py)                                      │
+│     • pdfplumber                                                │
+│     • Extraction texte brut (~2000 caractères)                  │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  3. EXTRACTION SKILLS (skills_extractor.py)                     │
+│     • spaCy (fr_core_news_lg)                                   │
+│     • Pattern matching sur 1250 skills                           │
+│     • Résultat : ["python", "pandas", "numpy", ...]             │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  4. PRÉ-FILTRAGE FAISS (vector_store.py) [OPTIONNEL]            │
+│     • Embedding CV avec SentenceTransformer                     │
+│     • Recherche Top-50 dans index FAISS                         │
+│     • Temps : ~0.5s vs 2.5s (brute force)                       │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  5. SCORING DÉTAILLÉ (job_matcher.py)                           │
+│     • Calcul similarité CV ↔ Job (cosinus)                      │
+│     • Score = (Coverage × 0.5) + (Quality × 0.5)                │
+│     • Coverage : Skills couverts / Skills requis                │
+│     • Quality : Moyenne similarités sémantiques                 │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  6. TRI & FILTRAGE (api.py)                                     │
+│     • Tri par score décroissant                                 │
+│     • Filtrage score minimum (défaut: 40%)                      │
+│     • Limitation Top-K (défaut: 25)                             │
+└─────────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────────┐
+│  7. AFFICHAGE (app.py)                                          │
+│     • Cards avec score + compétences matchées/manquantes        │
+│     • Filtres interactifs (remote, expérience, score)           │
+│     • Graphiques de répartition                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧪 **Tests et Validation**
+
+### **Tester l'API avec cURL**
+
+```bash
+# 1. Extraction de compétences
+curl -X POST "http://localhost:8000/api/v1/extract-skills" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/CV_exemple.pdf"
+
+# 2. Recommandation de jobs (TOP 5)
+curl -X POST "http://localhost:8000/api/v1/recommend-jobs" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/CV_exemple.pdf" \
+  -F "top_k=5"
+
+# 3. Recherche sémantique
+curl -X POST "http://localhost:8000/api/v1/search" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Machine learning engineer with Python", "top_k": 5}'
+
+# 4. Simulation d'entretien
+curl -X POST "http://localhost:8000/api/v1/simulate-interview" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "job_title": "Data Scientist",
+    "cv_skills": ["Python", "Machine Learning", "TensorFlow"],
+    "num_questions": 3
+  }'
+```
+
+### **Script de test complet**
+
+```bash
+# Créer le script
+cat > test_api.sh << 'EOF'
+#!/bin/bash
+echo "🧪 TEST COMPLET DE L'API"
+echo "========================"
+
+CV_PATH="data/CV_exemple.pdf"
+
+echo "1️⃣ Health Check..."
+curl -s http://localhost:8000/health | jq .
+
+echo "2️⃣ Statistiques..."
+curl -s http://localhost:8000/api/v1/stats | jq .
+
+echo "3️⃣ Recommandations TOP 3..."
+curl -s -X POST "http://localhost:8000/api/v1/recommend-jobs" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@$CV_PATH" \
+  -F "top_k=3" | jq .
+
+echo "✅ TESTS TERMINÉS"
+EOF
+
+# Rendre exécutable
+chmod +x test_api.sh
+
+# Lancer
+./test_api.sh
+```
+
+---
+
+## 🎯 **Modèle ML Entraîné**
+
+### **Caractéristiques du Modèle**
 
 - **Type** : XGBoost Classifier
 - **Classes** : 3 (No Fit, Partial Fit, Perfect Fit)
 - **Features** : 15 (coverage, quality, similarities, etc.)
 - **Performance** : ~70% accuracy (Test Set)
-- **Dataset** : 4,524 samples (nettoyé)
+- **Dataset** : 4,524 samples (nettoyé depuis 6,241 bruts)
+- **Tracking** : MLflow (expériences + Model Registry)
 
-# 🎯 ROADMAP PFE - Système d'Aide à l'Emploi pour Juniors
+### **Features Utilisées (15)**
 
-## 📅 SEMAINE 1-2 : CORE FONCTIONNEL
-- [x] Parser CV (01_cv_parser.ipynb)
-- [x] Extraction compétences (02_skills_extraction_simple.ipynb)
-- [x] Matching sémantique (03_semantic_matching.ipynb)
-- [X] Scraping offres (04_job_scraping.ipynb) 
-- [X] Matching CV ↔ Offres (05_job_recommendation.ipynb)
-- [X] Dashboard Streamlit v1 (app.py)
+```python
+[
+    'job_title_similarity',
+    'description_similarity', 
+    'requirements_similarity',
+    'responsibilities_similarity',
+    'matching_skills_count',
+    'missing_skills_count',
+    'skills_coverage',
+    'avg_skill_similarity',
+    'max_skill_similarity',
+    'min_skill_similarity',
+    'cv_job_cosine_similarity',
+    'quality_score',
+    'has_remote',
+    'experience_level',
+    'company_type'
+]
+```
 
-**Livrable Semaine 2** : Système fonctionnel de bout en bout
+### **Entraîner et Tracker le Modèle**
 
-## 📅 SEMAINE 3-4 : ENRICHISSEMENT
-- [X] API FastAPI (src/api.py) 
-- [x] Dashboard Streamlit avec API 
-- [X] Base vectorielle FAISS (src/vector_store.py)
-- [X] Simulation entretien LLM (06_interview_simulation.ipynb)
-- [X] Clustering profils KMeans (07_profile_clustering.ipynb)
+```bash
+# Entraîner le modèle et logger dans MLflow
+python mlops/train_and_log.py
 
-**Livrable Semaine 4** : API + Features ML avancées
+# Enregistrer dans le Model Registry
+python mlops/register_model.py
 
-## 📅 SEMAINE 5-6 : INDUSTRIALISATION
-- [ ] Tests unitaires (tests/) ← MAINTENANT
-- [ ] Dashboard Streamlit v2 (graphiques, stats)
-- [ ] Scraping offres réelles via API (optionnel)
-- [ ] Monitoring performances (logs, métriques)
+# Tester une prédiction
+python mlops/serve_model.py
 
-**Livrable Semaine 6** : Code robuste et testé
+# Consulter les runs dans MLflow UI
+mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
+# Ouvrir http://localhost:5000
+```
 
-## 📅 SEMAINE 7-8 : FINALISATION
-- [ ] Documentation complète (README, docstrings)
-- [ ] Rapport PFE
-- [ ] Préparation soutenance (slides)
-- [ ] Déploiement cloud (optionnel)
+---
 
-**Livrable Semaine 8** : PFE complet
+## 🛠️ **Technologies Utilisées**
 
-Pipeline :
+### **Backend**
+- **FastAPI** : API REST moderne et performante
+- **PostgreSQL** : Base de données relationnelle
+- **SQLAlchemy** : ORM Python
 
-┌─────────────────────────────────────────────────────────────┐
-│  1. UPLOAD CV (Frontend Streamlit)                          │
-│     • Utilisateur upload CV PDF via interface               │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  2. PARSING (cv_parser.py)                                  │
-│     • PyPDF2 + pdfplumber                                   │
-│     • Extraction texte brut (~2000 caractères)              │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  3. EXTRACTION SKILLS (skills_extractor.py)                 │
-│     • spaCy                                                 │
-│     • Pattern matching sur skills                           │
-│     • Résultat : ["python", "pandas", "numpy", ...]         │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  4. PRÉ-FILTRAGE FAISS (vector_store.py) [OPTIONNEL]        │
-│     • Embedding CV avec SentenceTransformer                 │
-│     • Recherche Top-50 dans index FAISS                     │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  5. SCORING DÉTAILLÉ (job_matcher.py)                       │
-│     • Calcul similarité CV ↔ Job (cosinus)                  │
-│     • Score = (Coverage × 0.5) + (Quality × 0.5)            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  6. TRI & FILTRAGE (api.py)                                 │
-│     • Tri par score décroissant                             │
-│     • Filtrage score minimum (défaut: 40%)                  │
-│     • Limitation Top-N (défaut: 10)                         │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│  7. AFFICHAGE (app.py)                                      │
-│     • Cards avec score + compétences matchées/manquantes    │
-│     • Filtres interactifs (remote, expérience)              │
-│     • Graphiques de répartition                             │
-└─────────────────────────────────────────────────────────────┘
+### **NLP & ML**
+- **spaCy** : Extraction de compétences (en_core_news_lg)
+- **SentenceTransformers** : Embeddings sémantiques (all-mpnet-base-v2)
+- **FAISS** : Recherche vectorielle ultra-rapide
+- **XGBoost** : Classification des matchs CV-Job
+- **Groq** : LLM pour simulation d'entretiens
 
+### **MLOps**
+- **MLflow** : Tracking expériences + Model Registry
+- **Docker** : Containerisation 4-tiers
+- **Docker Compose** : Orchestration multi-conteneurs
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         🎯 PFE - JOB MATCHING SYSTEM                        │
-│                         Système de Recommandation d'Emplois                  │
-└─────────────────────────────────────────────────────────────────────────────┘
+### **Frontend**
+- **Streamlit** : Dashboard interactif
+- **Plotly** : Visualisations graphiques
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           📱 FRONTEND (Streamlit)                            │
-│                               app.py                                         │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  🖥️  Interface Utilisateur                                                  │
-│  • Upload CV (PDF)                                                          │
-│  • Affichage des recommandations                                            │
-│  • Filtres (score, remote, expérience)                                      │
-│  • Visualisation des compétences matchées/manquantes                        │
-│  • Statistiques dashboard                                                   │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓ HTTP POST
-                                    ↓ /api/v1/recommend-jobs
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          🚀 BACKEND API (FastAPI)                            │
-│                              src/api.py                                      │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  📡 Endpoints REST                                                           │
-│  • POST /api/v1/recommend-jobs      → Recommandations                      │
-│  • POST /api/v1/extract-skills      → Extraction skills CV                 │
-│  • GET  /api/v1/jobs                → Liste offres (avec filtres)          │
-│  • GET  /api/v1/stats               → Statistiques système                 │
-│  • GET  /health                     → Health check                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    ↓
-                    ┌───────────────┴────────────────┐
-                    ↓                                ↓
-┌─────────────────────────────────┐  ┌──────────────────────────────────┐
-│    🧠 MODULES CORE (src/)       │  │   📚 DATA LAYER                  │
-├─────────────────────────────────┤  ├──────────────────────────────────┤
-│  1️⃣  cv_parser.py               │  │  • data/jobs.json (25 offres)   │
-│     • PyPDF2                    │  │  • data/skills_reference.json    │
-│     • pdfplumber                │  │  • data/faiss_index.bin          │
-│     • Extraction texte brut     │  │  • data/job_embeddings.pkl       │
-│                                 │  │  • data/RESUME_*.pdf             │
-│  2️⃣  skills_extractor.py        │  └──────────────────────────────────┘
-│     • spaCy (fr_core_news_lg)   │
-│     • Règles linguistiques      │
-│     • Normalisation skills      │
-│                                 │
-│  3️⃣  job_matcher.py             │
-│     • SentenceTransformer       │
-│     • all-mpnet-base-v2         │
-│     • Similarité sémantique     │
-│     • Scoring Approche 4        │
-│                                 │
-│  4️⃣  vector_store.py            │
-│     • FAISS indexing            │
-│     • Pré-filtrage rapide       │
-│     • Top-k candidats           │
-│                                 │
-│  5️⃣  interview_simulator.py     │
-│     • Génération questions      │
-│     • Évaluation réponses       │
-└─────────────────────────────────┘
+### **Parsing PDF**
+- **pdfplumber** : Extraction texte 
+
+---
+
+## 📊 **Performances**
+
+| Métrique | Valeur |
+|----------|--------|
+| **Jobs disponibles** | 25 offres (Data Science/ML) |
+| **Skills trackés** | 171 compétences techniques |
+| **Temps parsing CV** | ~2-3 secondes |
+| **Temps matching** | ~0.1s/job (2.5s pour 25 jobs) |
+| **Temps total pipeline** | ~7-10 secondes |
+| **Accuracy modèle ML** | 70% (test set) |
+| **Index FAISS** | 768 dimensions (SentenceTransformer) |
+
+---
+
+## 🌐 **URLs Clés (Mode Docker)**
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **API Swagger** | http://localhost:8000/docs | Documentation interactive API |
+| **API Health** | http://localhost:8000/health | Statut de l'API |
+| **Streamlit** | http://localhost:8501 | Interface utilisateur |
+| **MLflow UI** | http://localhost:5000 | Tracking des modèles |
+| **PostgreSQL** | localhost:5432 | Base de données (psql uniquement) |
 
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    📤 ÉTAPE 1 : UPLOAD CV (Frontend)                        │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    Utilisateur clique "Analyser mon CV"
-                    uploaded_file.pdf (via st.file_uploader)
-                                    │
-                                    ↓
-                         HTTP POST multipart/form-data
-                         → http://localhost:8000/api/v1/recommend-jobs
-                         params: {top_n: 25, min_score: 40}
-                                    │
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                  📥 ÉTAPE 2 : RÉCEPTION API (api.py)                        │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    @app.post("/api/v1/recommend-jobs")
-                    └─ Validation fichier PDF
-                    └─ Sauvegarde temporaire /tmp/cv_temp.pdf
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              🔍 ÉTAPE 3 : PARSING CV (cv_parser.py)                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    CVParser.parse_cv(cv_path) 
-                                    │
-                    ┌───────────────┴────────────────┐
-                    ↓                                ↓
-            ┌──────────────┐              ┌──────────────┐
-            │   PyPDF2     │              │  pdfplumber  │
-            │   Fallback   │              │  Méthode 1   │
-            └──────────────┘              └──────────────┘
-                    │                                │
-                    └────────────┬───────────────────┘
-                                 ↓
-                    📄 CV Texte Brut (string)
-                    • "Robert UNG, Data Scientist..."
-                    • ~2000 caractères
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│          🧬 ÉTAPE 4 : EXTRACTION SKILLS (skills_extractor.py)               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    SkillsExtractor.extract_skills(cv_text)
-                                    │
-                    ┌───────────────┴────────────────┐
-                    ↓                                ↓
-        ┌─────────────────────┐         ┌──────────────────────┐
-        │  spaCy Processing   │         │  Pattern Matching    │
-        │  • Tokenization     │         │  • skills_reference  │
-        │  • POS tagging      │         │  • Regex patterns    │
-        │  • Named entities   │         │  • 171 tech skills   │
-        └─────────────────────┘         └──────────────────────┘
-                    │                                │
-                    └────────────┬───────────────────┘
-                                 ↓
-                    📋 Liste de Compétences Normalisées
-                    cv_skills = [
-                        "python", "pandas", "numpy", 
-                        "scikit-learn", "tensorflow",
-                        "docker", "fastapi", "git", ...
-                    ] (20 skills typiquement)
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│         🎯 ÉTAPE 5 : PRÉ-FILTRAGE FAISS (vector_store.py) [OPTIONNEL]      │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-            IF use_faiss=True OR len(jobs) > 50:
-                                    │
-                    VectorStore.search(cv_skills, cv_text)
-                                    │
-                    ┌───────────────┴────────────────┐
-                    ↓                                ↓
-        ┌─────────────────────┐         ┌──────────────────────┐
-        │  Embeddings CV      │         │  FAISS Index         │
-        │  • SentenceTransf.  │   ←→    │  • 25 offres indexées│
-        │  • all-mpnet-base-v2│         │  • Recherche rapide  │
-        │  • 768 dimensions   │         │  • Cosine similarity │
-        └─────────────────────┘         └──────────────────────┘
-                    │
-                    ↓
-            🔝 Top 50 Candidats (jobs pré-filtrés)
-            Temps : ~0.5s au lieu de 2.5s
-                                    │
-                    ELSE:
-                    └─→ Tous les 25 jobs du dataset
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│         🧮 ÉTAPE 6 : SCORING DÉTAILLÉ (job_matcher.py)                      │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-            FOR EACH job IN candidate_jobs:
-                                    │
-                JobMatcher.calculate_job_match_score(cv_skills, job)
-                                    │
-        ┌───────────────────────────┴───────────────────────────┐
-        ↓                           ↓                           ↓
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ Extract Job      │    │ Embeddings       │    │ Compute          │
-│ Skills           │    │ Calculation      │    │ Similarity       │
-│                  │    │                  │    │                  │
-│ • requirements[] │ →  │ SentenceTransf.  │ →  │ Cosine Sim.      │
-│ • nice_to_have[] │    │ encode()         │    │ (CV ↔ Job)       │
-│                  │    │ 768-dim vectors  │    │ 0.0 → 1.0        │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
-        │                           │                           │
-        └───────────────────────────┴───────────────────────────┘
-                                    ↓
-                        📊 Approche 4 Scoring
-                        ┌─────────────────────────┐
-                        │ Coverage (50%)          │
-                        │ = Skills couverts /     │
-                        │   Skills requis         │
-                        │                         │
-                        │ Quality (50%)           │
-                        │ = Moyenne similarités   │
-                        │   des skills matchés    │
-                        └─────────────────────────┘
-                                    ↓
-                        🎯 Score Final (0-100%)
-                        score = (coverage × 0.5) + (quality × 0.5)
-                                    │
-                                    ↓
-                        📋 Détails Complets
-                        {
-                            "score": 78.3,
-                            "matching_skills": [
-                                "python", "pandas", "numpy", ...
-                            ],
-                            "missing_skills": [
-                                "spark", "airflow", "kafka", ...
-                            ],
-                            "skills_details": {
-                                "coverage": 76.5,
-                                "quality": 80.1,
-                                "covered_count": 13,
-                                "total_required": 17
-                            }
-                        }
-                                    │
-                                    ↓
-            END FOR
-            Temps : ~0.1s par job (2.5s pour 25 jobs)
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              📊 ÉTAPE 7 : TRI ET FILTRAGE (api.py)                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-            1. Tri par score décroissant
-               detailed_results.sort(key='score', reverse=True)
-                                    │
-            2. Filtrage par score minimum
-               jobs = [j for j in jobs if j['score'] >= min_score]
-                                    │
-            3. Limitation top_n
-               jobs = jobs[:top_n]  # Max 25
-                                    │
-                                    ↓
-            🎯 Recommandations Finales (JSON)
-            {
-                "recommendations": [
-                    {
-                        "job_id": "job_001",
-                        "title": "ML Engineer",
-                        "score": 85.5,
-                        "matching_skills": [...],
-                        "missing_skills": [...]
-                    },
-                    ...
-                ],
-                "total_jobs_analyzed": 25,
-                "cv_skills_count": 20
-            }
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              📤 ÉTAPE 8 : RÉPONSE HTTP → FRONTEND                           │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-            HTTP 200 OK
-            Content-Type: application/json
-            Response Time: ~7-10 secondes
-                                    │
-                                    ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│              🎨 ÉTAPE 9 : AFFICHAGE STREAMLIT (app.py)                      │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-            st.session_state.recommendations = result
-                                    │
-        ┌───────────────────────────┴───────────────────────────┐
-        ↓                           ↓                           ↓
-┌──────────────┐        ┌──────────────────┐        ┌──────────────────┐
-│  Sidebar     │        │  Main Content    │        │  Job Cards       │
-│  Filtres     │        │  Statistiques    │        │  Détails         │
-│              │        │                  │        │                  │
-│ • Score min  │   →    │ • Total offres   │   →    │ • Score badge    │
-│ • Remote     │        │ • Skills CV      │        │ • Compétences ✅ │
-│ • Expérience │        │ • Graphiques     │        │ • Compétences ❌ │
-└──────────────┘        └──────────────────┘        └──────────────────┘
-        │                           │                           │
-        └───────────────────────────┴───────────────────────────┘
-                                    ↓
-                        🎉 RÉSULTAT FINAL
-                        Interface interactive avec :
-                        • 8-25 recommandations affichées
-                        • Filtrage en temps réel
-                        • Détails par offre
-                        • Compétences matchées/manquantes
+---
