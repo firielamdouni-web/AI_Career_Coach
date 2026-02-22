@@ -323,6 +323,40 @@ def display_job_card(job, rank):
     
     with col2:
         st.markdown(f"**🎯 Score de matching** : {score:.1f}%")
+
+        # Badge ML
+        if job.get('ml_available'):
+            ml_label = job.get('ml_label', 'N/A')
+            ml_score = job.get('ml_score')
+            
+            # Couleur selon le label ML
+            ml_colors = {
+                'Perfect Fit': ('🟢', '#4CAF50'),
+                'Partial Fit': ('🟡', '#FFC107'),
+                'No Fit':      ('🔴', '#f44336'),
+            }
+            ml_emoji, ml_color = ml_colors.get(ml_label, ('⚪', '#9E9E9E'))
+            
+            st.markdown(
+                f"**🤖 Prédiction ML** : "
+                f"<span style='color:{ml_color}; font-weight:bold;'>"
+                f"{ml_emoji} {ml_label}</span>",
+                unsafe_allow_html=True
+            )
+            
+            # Probabilités ML dans un expander
+            ml_proba = job.get('ml_probabilities')
+            if ml_proba:
+                with st.expander("📊 Probabilités ML"):
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.metric("🔴 No Fit", f"{ml_proba['no_fit']*100:.1f}%")
+                    with col_b:
+                        st.metric("🟡 Partial Fit", f"{ml_proba['partial_fit']*100:.1f}%")
+                    with col_c:
+                        st.metric("🟢 Perfect Fit", f"{ml_proba['perfect_fit']*100:.1f}%")
+        else:
+            st.markdown("**🤖 Prédiction ML** : ⚪ N/A")
     
     # Compétences matchées
     with st.expander("🔧 Compétences matchées"):

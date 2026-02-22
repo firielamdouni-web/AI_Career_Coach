@@ -20,6 +20,7 @@ from src.database import get_db_manager
 from .cv_parser import CVParser
 from .skills_extractor import SkillsExtractor
 from .job_matcher import JobMatcher
+from .ml_predictor import get_ml_predictor
 
 # ============================================================================
 # CONFIGURATION DE L'APPLICATION
@@ -157,7 +158,10 @@ class JobRecommendation(BaseModel):
     competition_factor: int
     matching_skills: List[str]
     missing_skills: List[str] = []
-
+    ml_label: Optional[str] = None     
+    ml_score: Optional[float] = None     
+    ml_probabilities: Optional[Dict] = None  
+    ml_available: bool = False           
 
 class RecommendationsResponse(BaseModel):
     recommendations: List[JobRecommendation]
@@ -416,6 +420,7 @@ async def recommend_jobs(
         
         # 4. Scoring avec JobMatcher (Approche 4)
         matcher = get_job_matcher()
+        ml_predictor = get_ml_predictor()
         detailed_results = []
         
         for job in candidate_jobs:
@@ -442,6 +447,51 @@ async def recommend_jobs(
                 skill for skill in all_job_skills 
                 if skill not in matched_job_skills
             ]
+
+            # ✅ FIX : Prédiction ML avec la bonne signature
+            ml_result = {'ml_available': False, 'ml_label': 'N/A', 'ml_score': None}
+            if ml_predictor.is_loaded:
+                try:
+                    # ✅ Séparer skills techniques et soft du job
+                    known_technical = set(
+                        s.lower() for s in matcher.skills_db.get('technical_skills', [])
+                    )
+                    known_soft = set(
+                        s.lower() for s in matcher.skills_db.get('soft_skills', [])
+                    )
+                    job_technical_skills = [
+                        s for s in all_job_skills if s.lower() in known_technical
+                    ]
+                    job_soft_skills = [
+                        s for s in all_job_skills if s.lower() in known_soft
+                    ]
+                    # Skills non catégorisées → technical par défaut
+                    categorized = set(job_technical_skills + job_soft_skills)
+                    job_technical_skills += [
+                        s for s in all_job_skills if s not in categorized
+                    ]
+
+                    # ✅ Construire le texte brut du job pour TF-IDF et embedding
+                    job_raw_text = " ".join([
+                        job.get('title', ''),
+                        job.get('description', ''),
+                        " ".join(job.get('requirements', [])),
+                        " ".join(job.get('nice_to_have', []))
+                    ]).strip()
+
+                    ml_features = ml_predictor.compute_features(
+                        cv_technical_skills=technical_skills,
+                        cv_soft_skills=soft_skills,
+                        job_technical_skills=job_technical_skills,   
+                        job_soft_skills=job_soft_skills,             
+                        skills_details=detailed_score['skills_details'],  
+                        cv_raw_text=cv_text,                          
+                        job_raw_text=job_raw_text,                    
+                        sentence_model=matcher.model
+                    )
+                    ml_result = ml_predictor.predict(ml_features)
+                except Exception as e:
+                    print(f"⚠️ ML prediction error: {e}")
             
             detailed_results.append({
                 'job_id': job['job_id'],
@@ -453,7 +503,11 @@ async def recommend_jobs(
                 'score': detailed_score['score'],
                 'skills_details': detailed_score['skills_details'],
                 'matching_skills': matching_skills,  # Skills CV qui matchent
-                'missing_skills': missing_skills  # Skills job non matchées
+                'missing_skills': missing_skills,  # Skills job non matchées
+                'ml_label': ml_result.get('ml_label', 'N/A'),          
+                'ml_score': ml_result.get('ml_score'),                   
+                'ml_probabilities': ml_result.get('ml_probabilities'),  
+                'ml_available': ml_result.get('ml_available', False),    
             })
         
         # 5. Tri par score
@@ -481,7 +535,11 @@ async def recommend_jobs(
                 "location_match": 0,  # Deprecated (compatibilité)
                 "competition_factor": 0,  # Deprecated (compatibilité)
                 "matching_skills": job['matching_skills'],  
-                "missing_skills": job['missing_skills']
+                "missing_skills": job['missing_skills'],
+                "ml_label": job['ml_label'],                
+                "ml_score": job['ml_score'],               
+                "ml_probabilities": job['ml_probabilities'], 
+                "ml_available": job['ml_available'],         
             })
 
         # 1️⃣ Sauvegarder l'analyse CV
@@ -861,11 +919,21 @@ async def startup_event():
         print("✅ FAISS chargé avec succès")
     except Exception as e:
         print(f"⚠️  Erreur FAISS : {e}")
-    
+
+    # ✅ Pré-charger le modèle ML
+    print("\n⏳ Pré-chargement du modèle XGBoost...")
+    try:
+        ml = get_ml_predictor()
+        if ml.is_loaded:
+            print("✅ Modèle XGBoost chargé avec succès")
+        else:
+            print("⚠️  Modèle XGBoost non disponible (lance train_and_log.py)")
+    except Exception as e:
+        print(f"⚠️  Erreur ML : {e}")
+
     print("\n✅ API prête à recevoir des requêtes")
     print("📖 Documentation : http://127.0.0.1:8000/docs")
     print("="*60 + "\n")
-
 
 @app.on_event("shutdown")
 async def shutdown_event():
