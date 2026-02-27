@@ -4,7 +4,6 @@ Indexation et recherche sémantique avec Sentence-Transformers
 """
 
 import faiss
-import numpy as np
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Tuple
 import pickle

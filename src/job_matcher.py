@@ -4,7 +4,6 @@ Utilise Sentence-Transformers pour la similarité sémantique
 """
 
 from typing import List, Dict
-import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import logging

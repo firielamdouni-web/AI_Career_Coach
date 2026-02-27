@@ -2,7 +2,7 @@
 Tests unitaires - DatabaseManager (PostgreSQL mocké)
 """
 import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 from src.database import DatabaseManager, get_db_manager, close_db_connection
 import psycopg2
 

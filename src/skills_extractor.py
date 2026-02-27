@@ -8,7 +8,7 @@ import json
 import spacy
 import logging
 from pathlib import Path
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 
 # Configuration du logger
 logging.basicConfig(level=logging.INFO)
@@ -39,7 +39,7 @@ class SkillsExtractor:
         # ====================================================================
         self.nlp = None
         self.model_name = None
-
+        
         # Liste des modèles à essayer (ordre de priorité)
         models_to_try = [
             ("en_core_web_sm", "Anglais (développement local)"),

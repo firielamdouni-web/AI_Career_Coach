@@ -13,7 +13,7 @@ import tempfile
 import os
 import json
 from .vector_store import JobVectorStore
-from .interview_simulator import InterviewSimulator, get_interview_simulator
+from .interview_simulator import get_interview_simulator
 from src.database import get_db_manager
 
 # Import des modules locaux
