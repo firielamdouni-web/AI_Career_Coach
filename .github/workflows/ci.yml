@@ -49,8 +49,8 @@ jobs:
     env:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      PYTHONPATH: /home/runner/work/AI_Career_Coach/AI_Career_Coach 
-
+      PYTHONPATH: ${{ github.workspace }}
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
