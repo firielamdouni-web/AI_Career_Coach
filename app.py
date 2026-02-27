@@ -7,15 +7,15 @@ Utilise l'API FastAPI pour tous les traitements
 import streamlit as st
 import requests
 import json
-import os 
 from pathlib import Path
 from datetime import datetime
+import os
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-API_BASE_URL = os.getenv("API_URL", "http://ai-career-coach-api:8000")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")  # URL de l'API FastAPI
 
 st.set_page_config(
     page_title="AI Career Coach",
@@ -275,33 +275,6 @@ def get_jobs_list(category=None, remote=None, limit=25):
     except requests.exceptions.RequestException:
         return None
 
-def get_api_url():
-    """
-    Détecter automatiquement l'URL de l'API
-    
-    Returns:
-        str: URL de l'API (localhost ou nom Docker)
-    """
-    # 1. Vérifier si on est dans Docker (variable d'env)
-    if os.getenv("RUNNING_IN_DOCKER"):
-        return "http://ai-career-coach-api:8000"
-    
-    # 2. Sinon, vérifier si l'API est accessible sur localhost
-    try:
-        response = requests.get("http://localhost:8000/health", timeout=2)
-        if response.status_code == 200:
-            return "http://localhost:8000"
-    except:
-        pass
-    
-    # 3. Fallback : URL depuis variable d'environnement ou défaut Docker
-    return os.getenv("API_BASE_URL", "http://ai-career-coach-api:8000")
-
-# Utiliser la fonction pour obtenir l'URL
-API_BASE_URL = get_api_url()
-
-print(f"🔌 API detectée : {API_BASE_URL}")
-
 
 # ============================================================================
 # FONCTIONS D'AFFICHAGE
@@ -350,6 +323,40 @@ def display_job_card(job, rank):
     
     with col2:
         st.markdown(f"**🎯 Score de matching** : {score:.1f}%")
+
+        # Badge ML
+        if job.get('ml_available'):
+            ml_label = job.get('ml_label', 'N/A')
+            ml_score = job.get('ml_score')
+            
+            # Couleur selon le label ML
+            ml_colors = {
+                'Perfect Fit': ('🟢', '#4CAF50'),
+                'Partial Fit': ('🟡', '#FFC107'),
+                'No Fit':      ('🔴', '#f44336'),
+            }
+            ml_emoji, ml_color = ml_colors.get(ml_label, ('⚪', '#9E9E9E'))
+            
+            st.markdown(
+                f"**🤖 Prédiction ML** : "
+                f"<span style='color:{ml_color}; font-weight:bold;'>"
+                f"{ml_emoji} {ml_label}</span>",
+                unsafe_allow_html=True
+            )
+            
+            # Probabilités ML dans un expander
+            ml_proba = job.get('ml_probabilities')
+            if ml_proba:
+                with st.expander("📊 Probabilités ML"):
+                    col_a, col_b, col_c = st.columns(3)
+                    with col_a:
+                        st.metric("🔴 No Fit", f"{ml_proba['no_fit']*100:.1f}%")
+                    with col_b:
+                        st.metric("🟡 Partial Fit", f"{ml_proba['partial_fit']*100:.1f}%")
+                    with col_c:
+                        st.metric("🟢 Perfect Fit", f"{ml_proba['perfect_fit']*100:.1f}%")
+        else:
+            st.markdown("**🤖 Prédiction ML** : ⚪ N/A")
     
     # Compétences matchées
     with st.expander("🔧 Compétences matchées"):

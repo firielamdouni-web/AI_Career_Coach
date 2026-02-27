@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: pfe-postgres
+    environment:
+      POSTGRES_USER: pfe_user
+      POSTGRES_PASSWORD: pfe_password
+      POSTGRES_DB: pfe_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init/init_db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - pfe-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U pfe_user -d pfe_db -c 'SELECT 1' > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.10.2
+    container_name: pfe-mlflow
+    restart: unless-stopped
+    
+    environment:
+      MLFLOW_BACKEND_STORE_URI: sqlite:////tmp/mlflow/mlruns.db  # ✅ CHANGÉ
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tmp/mlflow/artifacts  # ✅ CHANGÉ
+    
+    volumes:
+      - mlflow_data:/tmp/mlflow  # ✅ CHANGÉ
+    
+    ports:
+      - "5000:5000"
+    
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////tmp/mlflow/mlruns.db
+      --default-artifact-root /tmp/mlflow/artifacts
+    
+    networks:
+      - pfe-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    container_name: pfe-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./data:/app/data:ro
+      - ./models:/app/models
+      - ./mlops:/app/mlops:ro
+      - mlflow_data:/tmp/mlflow
+    networks:
+      - pfe-network
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: '1'
+      DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: docker/streamlit.Dockerfile
+    container_name: pfe-streamlit
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./pages:/app/pages:ro
+      - ./app.py:/app/app.py:ro
+      - ./src:/app/src:ro
+      - ./data:/app/data:ro
+    networks:
+      - pfe-network
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: '1'
+      API_BASE_URL: http://api:8000
+      DATABASE_URL: postgresql://pfe_user:pfe_password@postgres:5432/pfe_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    restart: unless-stopped
+
+networks:
+  pfe-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  mlflow_data:             
+    driver: local

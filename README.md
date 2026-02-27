@@ -18,86 +18,75 @@
 ```
 AI_Career_Coach/
 │
-├── 📁 deployment/                         # Infrastructure et déploiement
-│   ├── 📁 docker/                         # Configuration Docker
-│   │   ├── docker-compose.yml              # Orchestration 4-tiers
-│   │   ├── Dockerfile.api                  # Image FastAPI
-│   │   ├── Dockerfile.streamlit            # Image Streamlit
-│   │   ├── .dockerignore                   # Fichiers exclus du build
-│   │   └── .env                            # Variables Docker (GROQ_API_KEY, etc.)
-│   │
-│   └── 📁 scripts/                        # Scripts d'initialisation
-│       └── init_db.sql                     # Schéma PostgreSQL
-│
 ├── 📁 data/                               # Données et artifacts
 │   ├── 📁 jobs/                           # Offres d'emploi et embeddings
 │   │   └── jobs_dataset.json              # 25 offres d'emploi (Data Science/ML)
 │   │
-│   ├── 📁 faiss_index/                     # Index de recherche vectorielle
-│   │   └── jobs.index                      # Index FAISS pré-calculé
-│   │
-│   ├── 📁 resume_fit_job/                  # Dataset CV-Job
-│   │   ├── 📁 processed/                   # Données nettoyées
+│   ├── 📁 resume_fit_job/                   # Dataset CV-Job
+│   │   ├── 📁 processed/                    # Données nettoyées
 │   │   │   └── v2_dataset_resume_job_fit_processed.xlsx  # Dataset nettoyé (4,524 samples)
-│   │   └── 📁 raw/                         # Données brutes
-│   │       └── dataset_resume_job_fit.xlsx # Dataset brut (6,241 samples)
+│   │   └── 📁 raw/                          # Données brutes
+│   │       └── huggingface_resume_job_fit_RAW.xlsx  # Dataset brut (6,241 samples)
 │   │
-│   └── skills_reference.json               # Compétences techniques + soft skills (171 skills)
+│   ├── skills_reference.json                # Compétences techniques + soft skills
+│   └── RESUME_*.pdf                         # CVs de test
 │
-├── 📁 mlops/                              # Pipeline MLOps
-│   ├── train_and_log.py                   # Entraînement + tracking MLflow
-│   ├── register_model.py                  # Enregistrement Model Registry
-│   ├── serve_model.py                     # Test de prédiction
-│   └── 📁 mlflow_tracking/                 # Tracking MLflow (généré automatiquement)
-│       ├── 📁 0/                           # Expérience par défaut
-│       ├── 📁 201601836074427054/          # Expérience CV-Job Fit Classifier
-│       └── 📁 models/                      # Model Registry
-│           └── job-matcher-classifier/     # Modèle enregistré (versions 1-2)
+├── 📁 db/ 
+│   ├── 📁 init/                         
+│       └── init_db.sql                     # Schéma PostgreSQL
 │
-├── 📁 models/                             # Modèles entraînés
-│   ├── classifier_clean_metadata.json     # Métadonnées du modèle XGBoost
-│   └── features.txt                       # Liste des 15 features ML
+├── 📁 docker/                             # Dockerfiles
+│   ├── api.Dockerfile                      # Image Docker API FastAPI
+│   └── streamlit.Dockerfile                # Image Docker Streamlit
 │
-├── 📁 notebooks/                          # Notebooks de développement
-│   ├── 01_cv_parser.ipynb                 # Parsing de CV PDF
-│   ├── 02_skills_extraction_simple.ipynb  # Extraction de compétences CV
+├── 📁 mlops/                                # Pipeline MLOps
+│   ├── train_and_log.py                     # Entraînement + tracking MLflow
+│   ├── register_model.py                    # Enregistrement Model Registry
+│   └── serve_model.py                       # Test de prédiction
+│
+├── 📁 models/                               # Modèles entraînés (metadata uniquement)
+│   └── classifier_clean_metadata.json       # Métadonnées du modèle XGBoost
+│
+├── 📁 notebooks/                            # Notebooks de développement
+│   ├── 01_cv_parser.ipynb                   # Parsing de CV PDF
+│   ├── 02_skills_extraction_simple.ipynb    # Extraction de compétences CV
 │   ├── 03_extraction_skills_job_offers.ipynb # Extraction de compétences jobs
-│   ├── 03_semantic_matching.ipynb         # Tests de matching sémantique
-│   ├── 04_job_generation.ipynb            # Génération du dataset d'offres
-│   ├── 05_job_recommendation.ipynb        # Système de recommandation
-│   ├── 06_faiss_indexing.ipynb            # Base vectorielle FAISS
-│   ├── 07_interview_simulation.ipynb      # Simulation d'entretiens
-│   ├── 08_exploration_dataset_RAW.ipynb   # Exploration dataset brute
-│   └── 09_ml_model_training.ipynb         # Entraînement modèle ML (XGBoost, 70% accuracy)
+│   ├── 03_semantic_matching.ipynb            # Tests de matching sémantique
+│   ├── 04_job_generation.ipynb              # Génération du dataset d'offres
+│   ├── 05_job_recommendation.ipynb          # Système de recommandation
+│   ├── 06_faiss_indexing.ipynb              # Base vectorielle
+│   ├── 07_interview_simulation.ipynb        # Simulation d'entretiens
+│   ├── 08_exploration_dataset_RAW.ipynb     # Exploration dataset brute
+│   └── 09_ml_model_training.ipynb           # Entraînement modèle ML (XGBoost, 70% accuracy)
 │
-├── 📁 src/                                # Code source principal
-│   ├── api.py                             # API FastAPI (8 endpoints REST)
-│   ├── cv_parser.py                       # Parser CV (PyPDF2 + pdfplumber)
-│   ├── skills_extractor.py                # Extraction compétences (spaCy + regex)
-│   ├── job_matcher.py                     # Matching sémantique (SentenceTransformer)
-│   ├── vector_store.py                    # Recherche vectorielle (FAISS)
-│   ├── interview_simulator.py             # Génération questions d'entretien (Groq LLM)
-│   ├── database.py                        # Gestion PostgreSQL (SQLAlchemy)
+├── 📁 src/                                   # Code source principal
+│   ├── api.py                               # API FastAPI (endpoints REST)
+│   ├── cv_parser.py                         # Parser CV (PyPDF2 + pdfplumber)
+│   ├── skills_extractor.py                  # Extraction compétences (spaCy + regex)
+│   ├── job_matcher.py                       # Matching sémantique (SentenceTransformer)
+│   ├── vector_store.py                      # Recherche vectorielle (FAISS)
+│   ├── database.py                          # Gestion PostgreSQL (SQLAlchemy)
+│   ├── interview_simulator.py               # Génération questions d'entretien
 │   └── compute_features_from_huggingface.py # Calcul features ML
 │
-├── 📁 pages/                              # Pages Streamlit additionnelles
-│   └── 1_Interview_Simulator.py          # Page simulation d'entretien
+├── 📁 pages/                               # Pages Streamlit
+│   └── 1_Interview_Simulation.py           # Page simulation entretien
 │
-├── 📁 tests/                              # Tests unitaires
-│   └── test_job_matcher_approach4.py      # Tests du système de matching
+├── 📁 tests/                                 # Tests unitaires
+│   └── ...
 │
-├── 📁 docs/                               # Documentation projet
-│   ├── ETAT_PROJET.md                     # Analyse détaillée du projet (5000+ mots)
-│   ├── RESUME_EXECUTIF.md                 # Synthèse rapide (2 pages)
-│   └── CHECKLIST_VISUELLE.md              # Checklist par composante
+├── 📁 requirements/ 
+│   ├── api.txt                                  # Dépendances API (FastAPI, Groq...)
+│   ├── frontend.txt                             # Dépendances Streamlit
+│   └── base.txt                                 # Dépendances communs
 │
-├── 📁 outputs/                            # Résultats générés (ignoré Git)
-│
-├── app.py                                 # Dashboard Streamlit principal
-├── requirements.txt                       # Dépendances Python
-├── .env                                   # Variables d'environnement (secrets)
-├── .gitignore                             
-└── README.md                              
+├── app.py                                    # Dashboard Streamlit (frontend)
+├── requirements.txt                          # Dépendances Python
+├── docker-compose.yml                        # Orchestration 4 services Docker
+├── .env.example                              # Template variables d'environnement
+├── .dockerignore                             # Fichiers exclus du build
+├── .gitignore                                
+└── README.md                                
 ```
 
 ## 🚀 Quick Start
@@ -106,21 +95,24 @@ AI_Career_Coach/
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/firielamdouni-web/AI_Career_Coach.git
+git clone https://github.com/firielamdouni-web/AI_Career_Coach/tree/Firiel
 cd AI_Career_Coach
 
 # 2. Configurer les variables d'environnement
-cp deployment/docker/.env.example deployment/docker/.env
-# Éditer deployment/docker/.env et ajouter votre GROQ_API_KEY
+cp .env.example .env
+# Éditer .env avec vos valeurs et ajouter votre GROQ_API_KEY
 
 # 3. Lancer tous les services (PostgreSQL + API + Streamlit + MLflow)
-cd deployment/docker
 docker-compose up -d
 
 # 4. Vérifier que tout est UP
 docker-compose ps
 
-# 5. Accéder aux interfaces
+# 5. Entraîner et enregistrer le modèle
+docker-compose exec api python mlops/train_and_log.py
+docker-compose exec api python mlops/register_model.py
+
+# 6. Accéder aux interfaces
 # - API Swagger : http://localhost:8000/docs
 # - Streamlit UI : http://localhost:8501
 # - MLflow UI : http://localhost:5000
@@ -156,7 +148,7 @@ docker-compose down -v        # Arrêter et supprimer les volumes (reset complet
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/firielamdouni-web/AI_Career_Coach.git
+git clone https://github.com/firielamdouni-web/AI_Career_Coach/tree/Firiel
 cd AI_Career_Coach
 
 # 2. Créer l'environnement virtuel
@@ -166,8 +158,8 @@ source env/bin/activate  # (ou env\Scripts\activate sur Windows)
 # 3. Installer les dépendances
 pip install -r requirements.txt
 
-# 4. Télécharger le modèle spaCy français
-python -m spacy download fr_core_news_lg
+# 4. Télécharger le modèle spaCy
+python -m spacy download en_core_news_lg
 
 # 5. Configurer les variables d'environnement
 cp .env.example .env
@@ -255,14 +247,14 @@ streamlit run app.py
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  2. PARSING (cv_parser.py)                                      │
-│     • PyPDF2 + pdfplumber                                       │
+│     • pdfplumber                                                │
 │     • Extraction texte brut (~2000 caractères)                  │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │  3. EXTRACTION SKILLS (skills_extractor.py)                     │
 │     • spaCy (fr_core_news_lg)                                   │
-│     • Pattern matching sur 171 skills                           │
+│     • Pattern matching sur 1250 skills                           │
 │     • Résultat : ["python", "pandas", "numpy", ...]             │
 └─────────────────────────────────────────────────────────────────┘
                            ↓
@@ -424,7 +416,7 @@ mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
 - **SQLAlchemy** : ORM Python
 
 ### **NLP & ML**
-- **spaCy** : Extraction de compétences (fr_core_news_lg)
+- **spaCy** : Extraction de compétences (en_core_news_lg)
 - **SentenceTransformers** : Embeddings sémantiques (all-mpnet-base-v2)
 - **FAISS** : Recherche vectorielle ultra-rapide
 - **XGBoost** : Classification des matchs CV-Job
@@ -440,8 +432,7 @@ mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
 - **Plotly** : Visualisations graphiques
 
 ### **Parsing PDF**
-- **PyPDF2** : Extraction texte (méthode principale)
-- **pdfplumber** : Fallback + tableaux
+- **pdfplumber** : Extraction texte 
 
 ---
 
@@ -473,3 +464,6 @@ mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
 ---
 
 
+[![CI/CD Pipeline](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml/badge.svg)](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml)
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-310/)
+[![Tests](https://img.shields.io/badge/tests-149%20passed-brightgreen.svg)]() 

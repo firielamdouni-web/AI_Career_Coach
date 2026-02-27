@@ -6,21 +6,15 @@ Page Streamlit pour pratiquer les entretiens d'embauche avec IA
 import streamlit as st
 import requests
 import json
-import os
 from pathlib import Path
 from datetime import datetime
+import os
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-def get_api_url():
-    """Obtenir l'URL de l'API selon l'environnement"""
-    if os.getenv("RUNNING_IN_DOCKER") == "true":
-        return os.getenv("API_BASE_URL", "http://ai-career-coach-api:8000")
-    return "http://localhost:8000"
-
-API_BASE_URL = get_api_url()  # ✅ MODIFIÉ : Utilise la fonction au lieu d'un hardcode
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
 st.set_page_config(
     page_title="🎤 Simulateur d'Entretien",
@@ -100,9 +94,8 @@ st.markdown("""
 def generate_interview_questions(cv_skills, job_id, num_questions=8):
     """Générer des questions d'entretien via API"""
     try:
-        api_url = get_api_url()  # ✅ AJOUTÉ
         response = requests.post(
-            f"{api_url}/api/v1/simulate-interview",  # ✅ MODIFIÉ
+            f"{API_BASE_URL}/api/v1/simulate-interview",
             json={
                 "cv_skills": cv_skills,
                 "job_id": job_id,
@@ -124,9 +117,8 @@ def generate_interview_questions(cv_skills, job_id, num_questions=8):
 def evaluate_answer_api(question, answer, question_type, target_skill=None):
     """Évaluer une réponse via API"""
     try:
-        api_url = get_api_url()  # ✅ AJOUTÉ
         response = requests.post(
-            f"{api_url}/api/v1/evaluate-answer",  # ✅ MODIFIÉ
+            f"{API_BASE_URL}/api/v1/evaluate-answer",
             json={
                 "question": question,
                 "answer": answer,
@@ -149,9 +141,8 @@ def evaluate_answer_api(question, answer, question_type, target_skill=None):
 def get_job_details(job_id):
     """Récupérer les détails d'un job via API"""
     try:
-        api_url = get_api_url()  # ✅ AJOUTÉ
         response = requests.get(
-            f"{api_url}/api/v1/jobs/{job_id}",  # ✅ MODIFIÉ
+            f"{API_BASE_URL}/api/v1/jobs/{job_id}",
             timeout=10
         )
         if response.status_code == 200:
@@ -215,8 +206,7 @@ if not st.session_state.interview_started:
         
         # Récupérer la liste des jobs
         try:
-            api_url = get_api_url()  # ✅ AJOUTÉ
-            response = requests.get(f"{api_url}/api/v1/jobs?limit=25")  # ✅ MODIFIÉ
+            response = requests.get(f"{API_BASE_URL}/api/v1/jobs?limit=25")
             if response.status_code == 200:
                 jobs = response.json()
                 
@@ -600,5 +590,4 @@ S'entraîner aux entretiens pour :
 """)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"🤖 **Propulsé par Groq (Llama 3.3 70B)**")
-st.sidebar.markdown(f"🔗 **API:** `{get_api_url()}`")  # ✅ AJOUTÉ : Debug info
+st.sidebar.markdown("🤖 **Propulsé par Groq (Llama 3.3 70B)**")

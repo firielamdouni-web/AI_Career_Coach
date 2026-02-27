@@ -12,54 +12,15 @@ from pathlib import Path
 import tempfile
 import os
 import json
-import logging
-from datetime import datetime
-import joblib
-import mlflow
-import mlflow.sklearn
+from .vector_store import JobVectorStore
+from .interview_simulator import InterviewSimulator, get_interview_simulator
+from src.database import get_db_manager
 
-# ============================================================================
-# ✅ CHARGEMENT DES VARIABLES D'ENVIRONNEMENT (AVANT TOUS LES IMPORTS)
-# ============================================================================
-from dotenv import load_dotenv
-load_dotenv()
-
-# Vérifier que DATABASE_URL est chargé
-if not os.getenv("DATABASE_URL"):
-    raise RuntimeError(
-        "❌ DATABASE_URL non trouvé. Vérifiez que le fichier .env existe à la racine du projet."
-    )
-
-# ============================================================================
-# IMPORTS DES MODULES LOCAUX
-# ============================================================================
+# Import des modules locaux
 from .cv_parser import CVParser
 from .skills_extractor import SkillsExtractor
 from .job_matcher import JobMatcher
-from .vector_store import JobVectorStore
-from .interview_simulator import InterviewSimulator, get_interview_simulator
-from .database import get_db_manager, close_db_connection
-
-# ============================================================================
-# CONFIGURATION DU LOGGER
-# ============================================================================
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-# ============================================================================
-# CONFIGURATION MLFLOW
-# ============================================================================
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-MLFLOW_EXPERIMENT_NAME = "ai-career-coach-production"
-
-# Initialiser MLflow
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-
-logger.info(f"✅ MLflow configuré : {MLFLOW_TRACKING_URI}")
+from .ml_predictor import get_ml_predictor
 
 # ============================================================================
 # CONFIGURATION DE L'APPLICATION
@@ -90,22 +51,19 @@ app.add_middleware(
 PROJECT_ROOT = Path(__file__).parent.parent
 JOBS_DATASET_PATH = PROJECT_ROOT / "data" / "jobs" / "jobs_dataset.json"
 SKILLS_DB_PATH = PROJECT_ROOT / "data" / "skills_reference.json"
-ML_MODEL_PATH = PROJECT_ROOT / "models" / "ml_classifier_clean_v1.pkl" 
 
 # Cache pour éviter de recharger à chaque requête
 _cv_parser = None
 _skills_extractor = None
 _job_matcher = None
 _jobs_dataset = None
-_vector_store = None
-_ml_classifier = None 
+
 
 def get_cv_parser() -> CVParser:
     """Obtenir le parser de CV (singleton)"""
     global _cv_parser
     if _cv_parser is None:
         _cv_parser = CVParser(method='pdfplumber')
-        logger.info("✅ CVParser initialisé")
     return _cv_parser
 
 
@@ -114,7 +72,6 @@ def get_skills_extractor() -> SkillsExtractor:
     global _skills_extractor
     if _skills_extractor is None:
         _skills_extractor = SkillsExtractor(skills_db_path=str(SKILLS_DB_PATH))
-        logger.info("✅ SkillsExtractor initialisé")
     return _skills_extractor
 
 
@@ -123,7 +80,6 @@ def get_job_matcher() -> JobMatcher:
     global _job_matcher
     if _job_matcher is None:
         _job_matcher = JobMatcher()
-        logger.info("✅ JobMatcher initialisé")
     return _job_matcher
 
 
@@ -138,9 +94,9 @@ def get_jobs_dataset() -> Dict:
             )
         with open(JOBS_DATASET_PATH, 'r', encoding='utf-8') as f:
             _jobs_dataset = json.load(f)
-        logger.info(f"✅ Dataset chargé : {len(_jobs_dataset.get('jobs', []))} offres")
     return _jobs_dataset
 
+_vector_store = None
 
 def get_vector_store() -> JobVectorStore:
     """Obtenir le vector store FAISS (singleton)"""
@@ -155,38 +111,19 @@ def get_vector_store() -> JobVectorStore:
         # Charger l'index si disponible
         if index_path.exists() and metadata_path.exists():
             _vector_store.load(str(index_path), str(metadata_path))
-            logger.info(f"✅ Index FAISS chargé : {_vector_store.index.ntotal} offres")
+            print(f"✅ Index FAISS chargé : {_vector_store.index.ntotal} offres")
         else:
             # Construire l'index si absent
-            logger.warning("⚠️  Index FAISS non trouvé, construction en cours...")
+            print("⚠️  Index FAISS non trouvé, construction en cours...")
             dataset = get_jobs_dataset()
             _vector_store.build_index(dataset['jobs'], index_type='flat')
             
             # Sauvegarder pour la prochaine fois
             index_path.parent.mkdir(parents=True, exist_ok=True)
             _vector_store.save(str(index_path), str(metadata_path))
-            logger.info("✅ Index FAISS construit et sauvegardé")
+            print(f"✅ Index FAISS construit et sauvegardé")
     
     return _vector_store
-
-def get_ml_classifier():
-    """Obtenir le modèle ML XGBoost (singleton)"""
-    global _ml_classifier
-    if _ml_classifier is None:
-        if ML_MODEL_PATH.exists():
-            try:
-                _ml_classifier = joblib.load(ML_MODEL_PATH)
-                logger.info(f"✅ Modèle ML chargé : {ML_MODEL_PATH}")
-                logger.info(f"   • Type : {type(_ml_classifier)}")
-                logger.info(f"   • Features : {_ml_classifier.n_features_in_}")
-            except Exception as e:
-                logger.error(f"❌ Erreur chargement modèle ML : {e}")
-                _ml_classifier = None
-        else:
-            logger.warning(f"⚠️ Modèle ML non trouvé : {ML_MODEL_PATH}")
-            _ml_classifier = None
-    return _ml_classifier
-
 
 # ============================================================================
 # MODÈLES PYDANTIC (VALIDATION DES RÉPONSES)
@@ -221,13 +158,15 @@ class JobRecommendation(BaseModel):
     competition_factor: int
     matching_skills: List[str]
     missing_skills: List[str] = []
-
+    ml_label: Optional[str] = None     
+    ml_score: Optional[float] = None     
+    ml_probabilities: Optional[Dict] = None  
+    ml_available: bool = False           
 
 class RecommendationsResponse(BaseModel):
     recommendations: List[JobRecommendation]
     total_jobs_analyzed: int
     cv_skills_count: int
-    faiss_used: bool = False
 
 
 class JobDetail(BaseModel):
@@ -258,7 +197,6 @@ class InterviewRequest(BaseModel):
     job_id: str
     num_questions: int = 8
 
-
 class InterviewResponse(BaseModel):
     """Réponse avec questions d'entretien"""
     job_title: str
@@ -266,14 +204,12 @@ class InterviewResponse(BaseModel):
     technical_questions: List[Dict]
     total_questions: int
 
-
 class AnswerEvaluationRequest(BaseModel):
     """Requête d'évaluation de réponse"""
     question: str
     answer: str
     question_type: str
     target_skill: Optional[str] = None
-
 
 class AnswerEvaluationResponse(BaseModel):
     """Réponse d'évaluation"""
@@ -283,15 +219,21 @@ class AnswerEvaluationResponse(BaseModel):
     points_amelioration: List[str]
     recommandations: List[str]
 
+class MLPredictRequest(BaseModel):
+    """Requête de prédiction ML directe"""
+    cv_technical_skills: List[str] = Field(..., description="Skills techniques du CV")
+    cv_soft_skills: List[str] = Field(default=[], description="Soft skills du CV")
+    job_id: str = Field(..., description="ID de l'offre d'emploi")
 
-class SearchRequest(BaseModel):
-    query: str = Field(..., description="Requête de recherche")
-    top_k: int = Field(5, ge=1, le=25, description="Nombre de résultats")
-
-
-class MatchRequest(BaseModel):
-    cv_text: str = Field(..., description="Texte du CV")
-    top_k: int = Field(5, ge=1, le=25, description="Nombre de résultats")
+class MLPredictResponse(BaseModel):
+    """Réponse de prédiction ML"""
+    job_id: str
+    job_title: str
+    ml_label: str
+    ml_score: float
+    ml_probabilities: Dict
+    features_used: Dict
+    model_info: Dict
 
 # ============================================================================
 # ENDPOINTS
@@ -299,7 +241,9 @@ class MatchRequest(BaseModel):
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Endpoint racine - Informations sur l'API"""
+    """
+    Endpoint racine - Informations sur l'API
+    """
     return {
         "message": "🎯 AI Career Coach API",
         "version": "1.0.0",
@@ -311,26 +255,26 @@ async def root():
             "extract_skills": "/api/v1/extract-skills",
             "recommend_jobs": "/api/v1/recommend-jobs",
             "list_jobs": "/api/v1/jobs",
-            "get_job": "/api/v1/jobs/{job_id}",
-            "simulate_interview": "/api/v1/simulate-interview",
-            "evaluate_answer": "/api/v1/evaluate-answer",
-            "search": "/api/v1/search",
-            "match": "/api/v1/match"
+            "get_job": "/api/v1/jobs/{job_id}"
         }
     }
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Vérifier l'état de santé de l'API"""
+    """
+    Vérifier l'état de santé de l'API
+    
+    Returns:
+        État de l'API et disponibilité des ressources
+    """
     try:
+        # Vérifier que le dataset existe
         dataset = get_jobs_dataset()
         jobs_count = len(dataset.get('jobs', []))
-        models_loaded = (
-            _job_matcher is not None and 
-            _skills_extractor is not None and
-            _ml_classifier is not None  # ← AJOUTER
-        )
+        
+        # Vérifier si les modèles sont chargés
+        models_loaded = _job_matcher is not None and _skills_extractor is not None
         
         return {
             "status": "healthy",
@@ -340,7 +284,6 @@ async def health_check():
             "jobs_available": jobs_count
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
         return JSONResponse(
             status_code=503,
             content={
@@ -355,7 +298,16 @@ async def health_check():
 
 @app.post("/api/v1/extract-skills", response_model=SkillsResponse, tags=["Skills"])
 async def extract_skills(file: UploadFile = File(...)):
-    """Extraire les compétences d'un CV PDF"""
+    """
+    Extraire les compétences d'un CV PDF
+    
+    Args:
+        file: Fichier PDF du CV
+        
+    Returns:
+        Liste des compétences techniques et soft skills détectées
+    """
+    # Vérifier le type de fichier
     if not file.filename.endswith('.pdf'):
         raise HTTPException(
             status_code=400,
@@ -371,7 +323,7 @@ async def extract_skills(file: UploadFile = File(...)):
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # Parser le CV
+        # 1. Parser le CV
         parser = get_cv_parser()
         cv_text = parser.parse(tmp_file_path)
         
@@ -381,14 +333,12 @@ async def extract_skills(file: UploadFile = File(...)):
                 detail="Le CV est vide ou illisible. Vérifiez que le PDF contient du texte."
             )
         
-        # Extraire les compétences
+        # 2. Extraire les compétences
         extractor = get_skills_extractor()
-        skills_result = extractor.extract_from_cv(cv_text)
+        skills_result = extractor.extract_from_cv(cv_text)  
         
         technical_skills = skills_result['technical_skills']
         soft_skills = skills_result['soft_skills']
-        
-        logger.info(f"✅ Extraction réussie : {len(technical_skills)} tech skills, {len(soft_skills)} soft skills")
         
         return {
             "technical_skills": technical_skills,
@@ -400,12 +350,12 @@ async def extract_skills(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur extraction skills: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors du traitement du CV: {str(e)}"
         )
     finally:
+        # Nettoyer le fichier temporaire
         if tmp_file_path and os.path.exists(tmp_file_path):
             try:
                 os.unlink(tmp_file_path)
@@ -423,7 +373,21 @@ async def recommend_jobs(
     """
     Obtenir des recommandations d'emploi basées sur un CV
     SCORING BASÉ SUR APPROCHE 4 : Coverage + Quality
-    ✅ INTÉGRATION MLFLOW : Tracking automatique des runs
+    
+    **Workflow :**
+    1. Extraction des compétences du CV
+    2. Si use_faiss=True : Pré-filtrage rapide avec FAISS (top 50)
+    3. Scoring détaillé avec JobMatcher (Approche 4)
+    4. Tri et filtrage final
+    
+    Args:
+        file: Fichier PDF du CV
+        top_n: Nombre de recommandations (défaut: 10)
+        min_score: Score minimum (défaut: 40.0)
+        use_faiss: Utiliser FAISS (défaut: False)
+        
+    Returns:
+        Liste des jobs recommandés avec scores détaillés
     """
     if not file.filename.endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Le fichier doit être un PDF")
@@ -431,317 +395,213 @@ async def recommend_jobs(
     tmp_file_path = None
     
     try:
-        # ====================================================================
-        # ÉTAPE 1 : SAUVEGARDE TEMPORAIRE DU FICHIER
-        # ====================================================================
+        # Sauvegarder temporairement le fichier
         with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
             content = await file.read()
             tmp_file.write(content)
             tmp_file_path = tmp_file.name
         
-        # ====================================================================
-        # ÉTAPE 2 : PARSING DU CV
-        # ====================================================================
+        # 1. Parser le CV
         parser = get_cv_parser()
         cv_text = parser.parse(tmp_file_path)
         
         if not cv_text or len(cv_text.strip()) < 50:
             raise HTTPException(status_code=400, detail="Le CV est vide ou illisible")
         
-        # ====================================================================
-        # ÉTAPE 3 : EXTRACTION DES COMPÉTENCES
-        # ====================================================================
+        # 2. Extraire les compétences
         extractor = get_skills_extractor()
         skills_result = extractor.extract_from_cv(cv_text)
         technical_skills = skills_result['technical_skills']
         soft_skills = skills_result['soft_skills']
-        cv_skills = technical_skills + soft_skills
+        cv_skills = technical_skills + soft_skills 
         
         if not cv_skills:
             raise HTTPException(
                 status_code=400,
-                detail="Aucune compétence détectée dans le CV"
+                detail="Aucune compétence technique détectée dans le CV"
             )
         
-        logger.info(f"✅ CV analysé : {len(cv_skills)} compétences détectées")
+        # 3. Obtenir les candidats
+        if use_faiss:
+            vector_store = get_vector_store()
+            faiss_candidates = vector_store.search(
+                cv_skills=cv_skills,
+                cv_text=cv_text[:500],
+                top_k=min(50, vector_store.index.ntotal)
+            )
+            candidate_jobs = [job for job, _ in faiss_candidates]
+        else:
+            dataset = get_jobs_dataset()
+            candidate_jobs = dataset['jobs']
         
-        # ====================================================================
-        # 🎯 MLFLOW : DÉMARRAGE DU RUN
-        # ====================================================================
-        with mlflow.start_run(run_name=f"recommend_{file.filename}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"):
+        # 4. Scoring avec JobMatcher (Approche 4)
+        matcher = get_job_matcher()
+        ml_predictor = get_ml_predictor()
+        detailed_results = []
+        
+        for job in candidate_jobs:
+            # Calcul du score avec Approche 4
+            detailed_score = matcher.calculate_job_match_score(cv_skills, job)
             
-            # Log des paramètres de la requête
-            mlflow.log_param("cv_filename", file.filename)
-            mlflow.log_param("top_n", top_n)
-            mlflow.log_param("min_score", min_score)
-            mlflow.log_param("use_faiss", use_faiss)
-            mlflow.log_param("cv_text_length", len(cv_text))
-            mlflow.log_param("cv_skills_count", len(cv_skills))
-            mlflow.log_param("technical_skills_count", len(technical_skills))
-            mlflow.log_param("soft_skills_count", len(soft_skills))
+            # Extraire TOUTES les skills matchées
+            matching_skills = []
+            matched_job_skills = set()  # Tracker les job skills matchées
             
-            # ====================================================================
-            # ÉTAPE 4 : OBTENIR LES CANDIDATS (FAISS OU COMPLET)
-            # ====================================================================
-            if use_faiss:
-                vector_store = get_vector_store()
-                faiss_candidates = vector_store.search(
-                    cv_skills=cv_skills,
-                    cv_text=cv_text[:500],
-                    top_k=min(50, vector_store.index.ntotal)
-                )
-                candidate_jobs = [job for job, _ in faiss_candidates]
-                logger.info(f"✅ FAISS: {len(candidate_jobs)} candidats pré-filtrés")
-                mlflow.log_metric("faiss_candidates_count", len(candidate_jobs))
-            else:
-                dataset = get_jobs_dataset()
-                candidate_jobs = dataset['jobs']
-                mlflow.log_metric("total_jobs_in_dataset", len(candidate_jobs))
+            for match in detailed_score['skills_details']['top_matches']:
+                # Ajouter cv_skill à matching_skills
+                skill_name = match['cv_skill']
+                if skill_name not in matching_skills:
+                    matching_skills.append(skill_name)
+                
+                # Tracker la job_skill correspondante
+                matched_job_skills.add(match['job_skill'])
             
-            # ====================================================================
-            # ÉTAPE 5 : SCORING AVEC JOBMATCHER (APPROCHE 4)
-            # ====================================================================
-            matcher = get_job_matcher()
-            detailed_results = []
-            
-            for job in candidate_jobs:
-                detailed_score = matcher.calculate_job_match_score(cv_skills, job)
-                
-                # Extraire les skills matchées
-                matching_skills = []
-                matched_job_skills = set()
-                
-                for match in detailed_score['skills_details']['top_matches']:
-                    skill_name = match['cv_skill']
-                    if skill_name not in matching_skills:
-                        matching_skills.append(skill_name)
-                    matched_job_skills.add(match['job_skill'])
-                
-                # Calculer les skills manquantes
-                all_job_skills = matcher.extract_job_skills(job)
-                missing_skills = [
-                    skill for skill in all_job_skills 
-                    if skill not in matched_job_skills
-                ]
-                
-                detailed_results.append({
-                    'job_id': job['job_id'],
-                    'title': job['title'],
-                    'company': job['company'],
-                    'location': job['location'],
-                    'remote_ok': job.get('remote_ok', False),
-                    'experience': job['experience'],
-                    'score': detailed_score['score'],
-                    'skills_details': detailed_score['skills_details'],
-                    'matching_skills': matching_skills,
-                    'missing_skills': missing_skills
-                })
-            
-            # ====================================================================
-            # ÉTAPE 6 : TRI ET FILTRAGE
-            # ====================================================================
-            detailed_results.sort(key=lambda x: x['score'], reverse=True)
-            
-            filtered_jobs = [
-                job for job in detailed_results 
-                if job['score'] >= min_score
-            ][:top_n]
-            
-            logger.info(f"✅ {len(filtered_jobs)} recommandations générées (score ≥ {min_score})")
-            
-            # ====================================================================
-            # 🎯 MLFLOW : LOG DES MÉTRIQUES DE SCORING
-            # ====================================================================
-            mlflow.log_metric("total_jobs_analyzed", len(candidate_jobs))
-            mlflow.log_metric("jobs_after_filtering", len(filtered_jobs))
-            
-            if filtered_jobs:
-                scores = [job['score'] for job in filtered_jobs]
-                mlflow.log_metric("top1_score", scores[0])
-                mlflow.log_metric("avg_score", sum(scores) / len(scores))
-                mlflow.log_metric("min_score_returned", scores[-1])
-                mlflow.log_metric("max_score", max(scores))
-                mlflow.log_metric("median_score", sorted(scores)[len(scores)//2])
-                
-                # Log distribution des scores
-                mlflow.log_metric("scores_above_80", sum(1 for s in scores if s >= 80))
-                mlflow.log_metric("scores_60_to_80", sum(1 for s in scores if 60 <= s < 80))
-                mlflow.log_metric("scores_below_60", sum(1 for s in scores if s < 60))
-            else:
-                mlflow.log_metric("top1_score", 0.0)
-                mlflow.log_metric("avg_score", 0.0)
-                logger.warning(f"⚠️ Aucune recommandation avec score ≥ {min_score}")
-            
-            # ====================================================================
-            # 🎯 MLFLOW : SAUVEGARDE DES ARTEFACTS
-            # ====================================================================
-            try:
-                # Créer un fichier JSON avec les résultats complets
-                artifacts_data = {
-                    "cv_filename": file.filename,
-                    "timestamp": datetime.now().isoformat(),
-                    "cv_skills": {
-                        "technical": technical_skills,
-                        "soft": soft_skills,
-                        "total": len(cv_skills)
-                    },
-                    "recommendations": [
-                        {
-                            "rank": idx + 1,
-                            "job_id": job['job_id'],
-                            "title": job['title'],
-                            "company": job['company'],
-                            "score": round(job['score'], 2),
-                            "matching_skills": job['matching_skills'],
-                            "missing_skills": job['missing_skills']
-                        }
-                        for idx, job in enumerate(filtered_jobs)
-                    ],
-                    "parameters": {
-                        "top_n": top_n,
-                        "min_score": min_score,
-                        "use_faiss": use_faiss
-                    }
-                }
-                
-                # Sauvegarder dans un fichier temporaire
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                    json.dump(artifacts_data, f, indent=2, ensure_ascii=False)
-                    artifact_path = f.name
-                
-                # Logger l'artifact dans MLflow
-                mlflow.log_artifact(artifact_path, "recommendations")
-                
-                # Nettoyer le fichier temporaire
-                os.unlink(artifact_path)
-                
-                logger.info("✅ Artefacts MLflow sauvegardés")
-                
-            except Exception as e:
-                logger.error(f"⚠️ Erreur sauvegarde artefacts MLflow : {e}")
-            
-            # ====================================================================
-            # ÉTAPE 7 : SAUVEGARDE DANS POSTGRESQL
-            # ====================================================================
-            try:
-                db = get_db_manager()
-                
-                # Sauvegarder l'analyse du CV
-                cv_analysis_id = db.save_cv_analysis(
-                    cv_filename=file.filename,
-                    cv_text=cv_text,
-                    technical_skills=technical_skills,
-                    soft_skills=soft_skills,
-                    user_id=None
-                )
-                
-                logger.info(f"✅ CV analysis sauvegardé en BDD (ID: {cv_analysis_id})")
-                
-                # Log de l'ID dans MLflow
-                mlflow.log_param("cv_analysis_id", cv_analysis_id)
-                
-                # Sauvegarder les recommandations
-                for job in filtered_jobs:
-                    db.save_job_recommendation(
-                        cv_analysis_id=cv_analysis_id,
-                        job_id=job['job_id'],
-                        job_title=job['title'],
-                        company=job['company'],
-                        score=job['score'],
-                        skills_match=job['score'],
-                        experience_match=0,
-                        location_match=0,
-                        competition_factor=0,
-                        matching_skills=job['matching_skills']
+            # Calculer les skills manquantes
+            # = Toutes les skills du job - celles qui ont matché
+            all_job_skills = matcher.extract_job_skills(job)
+            missing_skills = [
+                skill for skill in all_job_skills 
+                if skill not in matched_job_skills
+            ]
+
+            # ✅ FIX : Prédiction ML avec la bonne signature
+            ml_result = {'ml_available': False, 'ml_label': 'N/A', 'ml_score': None}
+            if ml_predictor.is_loaded:
+                try:
+                    # ✅ Séparer skills techniques et soft du job
+                    known_technical = set(
+                        s.lower() for s in matcher.skills_db.get('technical_skills', [])
                     )
-                
-                logger.info(f"✅ {len(filtered_jobs)} recommandations sauvegardées en BDD")
-                
-            except Exception as e:
-                logger.error(f"⚠️ Erreur sauvegarde PostgreSQL (non bloquant): {e}")
+                    known_soft = set(
+                        s.lower() for s in matcher.skills_db.get('soft_skills', [])
+                    )
+                    job_technical_skills = [
+                        s for s in all_job_skills if s.lower() in known_technical
+                    ]
+                    job_soft_skills = [
+                        s for s in all_job_skills if s.lower() in known_soft
+                    ]
+                    # Skills non catégorisées → technical par défaut
+                    categorized = set(job_technical_skills + job_soft_skills)
+                    job_technical_skills += [
+                        s for s in all_job_skills if s not in categorized
+                    ]
+
+                    # ✅ Construire le texte brut du job pour TF-IDF et embedding
+                    job_raw_text = " ".join([
+                        job.get('title', ''),
+                        job.get('description', ''),
+                        " ".join(job.get('requirements', [])),
+                        " ".join(job.get('nice_to_have', []))
+                    ]).strip()
+
+                    ml_features = ml_predictor.compute_features(
+                        cv_technical_skills=technical_skills,
+                        cv_soft_skills=soft_skills,
+                        job_technical_skills=job_technical_skills,   
+                        job_soft_skills=job_soft_skills,             
+                        skills_details=detailed_score['skills_details'],  
+                        cv_raw_text=cv_text,                          
+                        job_raw_text=job_raw_text,                    
+                        sentence_model=matcher.model
+                    )
+                    ml_result = ml_predictor.predict(ml_features)
+                except Exception as e:
+                    print(f"⚠️ ML prediction error: {e}")
             
-            # ====================================================================
-            # ÉTAPE 8 : FORMATER LA RÉPONSE
-            # ====================================================================
-            recommendations = []
-            for job in filtered_jobs:
-                recommendations.append({
-                    "job_id": job['job_id'],
-                    "title": job['title'],
-                    "company": job['company'],
-                    "location": job['location'],
-                    "remote": job['remote_ok'],
-                    "experience_required": job['experience'],
-                    "score": job['score'],
-                    "skills_match": job['score'],
-                    "experience_match": 0,
-                    "location_match": 0,
-                    "competition_factor": 0,
-                    "matching_skills": job['matching_skills'],
-                    "missing_skills": job['missing_skills']
-                })
-            
-            # ====================================================================
-            # 🎯 MLFLOW : TAG DU RUN
-            # ====================================================================
-            mlflow.set_tag("cv_filename", file.filename)
-            mlflow.set_tag("success", "true")
-            mlflow.set_tag("environment", "production")
-            
-            logger.info(f"✅ MLflow run complété pour {file.filename}")
-            
-            # ====================================================================
-            # RETOUR DE LA RÉPONSE
-            # ====================================================================
-            return {
-                "recommendations": recommendations,
-                "total_jobs_analyzed": len(candidate_jobs),
-                "cv_skills_count": len(cv_skills),
-                "faiss_used": use_faiss
-            }
+            detailed_results.append({
+                'job_id': job['job_id'],
+                'title': job['title'],
+                'company': job['company'],
+                'location': job['location'],
+                'remote_ok': job.get('remote_ok', False),
+                'experience': job['experience'],
+                'score': detailed_score['score'],
+                'skills_details': detailed_score['skills_details'],
+                'matching_skills': matching_skills,  # Skills CV qui matchent
+                'missing_skills': missing_skills,  # Skills job non matchées
+                'ml_label': ml_result.get('ml_label', 'N/A'),          
+                'ml_score': ml_result.get('ml_score'),                   
+                'ml_probabilities': ml_result.get('ml_probabilities'),  
+                'ml_available': ml_result.get('ml_available', False),    
+            })
+        
+        # 5. Tri par score
+        detailed_results.sort(key=lambda x: x['score'], reverse=True)
+        
+        # 6. Filtrer par score minimum et top_n
+        filtered_jobs = [
+            job for job in detailed_results 
+            if job['score'] >= min_score
+        ][:top_n]
+        
+        # 7. Formater la réponse
+        recommendations = []
+        for job in filtered_jobs:
+            recommendations.append({
+                "job_id": job['job_id'],
+                "title": job['title'],
+                "company": job['company'],
+                "location": job['location'],
+                "remote": job['remote_ok'],
+                "experience_required": job['experience'],
+                "score": float(job['score']),  # ✅ Convertir en float Python
+                "skills_match": float(job['score']),  # ✅ Convertir en float Python
+                "experience_match": 0,  # Deprecated (compatibilité)
+                "location_match": 0,  # Deprecated (compatibilité)
+                "competition_factor": 0,  # Deprecated (compatibilité)
+                "matching_skills": job['matching_skills'],  
+                "missing_skills": job['missing_skills'],
+                "ml_label": job['ml_label'],                
+                "ml_score": job['ml_score'],               
+                "ml_probabilities": job['ml_probabilities'], 
+                "ml_available": job['ml_available'],         
+            })
+
+        # 1️⃣ Sauvegarder l'analyse CV
+        db = get_db_manager()
+        cv_id = db.save_cv_analysis(
+            cv_filename=file.filename,
+            cv_text=cv_text,  # Texte extrait du CV
+            technical_skills=technical_skills,  # Liste des compétences
+            soft_skills=soft_skills,
+            user_id=1  # anonymous
+        )
+        
+        # 2️⃣ Sauvegarder chaque recommandation
+        for job in filtered_jobs:
+            db.save_job_recommendation(
+                cv_analysis_id=cv_id,
+                job_id=job['job_id'],
+                job_title=job['title'],
+                company=job['company'],
+                score=float(job['score']),  # ✅ AJOUTER float()
+                coverage=float(job.get('skills_details', {}).get('coverage', 0)),  # ✅ AJOUTER float()
+                quality=float(job.get('skills_details', {}).get('quality', 0)),  # ✅ AJOUTER float()
+                matching_skills=job.get('matching_skills', []),
+                missing_skills=job.get('missing_skills', [])
+            )
+        
+        return {
+            "recommendations": recommendations,
+            "total_jobs_analyzed": len(candidate_jobs),
+            "cv_skills_count": len(cv_skills),
+            "database_id": cv_id
+        }
         
     except HTTPException:
-        # ====================================================================
-        # 🎯 MLFLOW : LOG DES ERREURS
-        # ====================================================================
-        try:
-            with mlflow.start_run(run_name=f"error_{file.filename}_{datetime.now().strftime('%H%M%S')}"):
-                mlflow.set_tag("success", "false")
-                mlflow.set_tag("error_type", "HTTPException")
-                mlflow.log_param("cv_filename", file.filename)
-        except:
-            pass
         raise
-        
     except Exception as e:
-        # ====================================================================
-        # 🎯 MLFLOW : LOG DES ERREURS SYSTÈME
-        # ====================================================================
-        logger.error(f"Erreur génération recommandations: {e}")
-        try:
-            with mlflow.start_run(run_name=f"error_{file.filename}_{datetime.now().strftime('%H%M%S')}"):
-                mlflow.set_tag("success", "false")
-                mlflow.set_tag("error_type", type(e).__name__)
-                mlflow.log_param("cv_filename", file.filename)
-                mlflow.log_param("error_message", str(e))
-        except:
-            pass
-        
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la génération des recommandations: {str(e)}"
         )
-        
     finally:
-        # ====================================================================
-        # NETTOYAGE DU FICHIER TEMPORAIRE
-        # ====================================================================
         if tmp_file_path and os.path.exists(tmp_file_path):
             try:
                 os.unlink(tmp_file_path)
             except:
                 pass
-
 
 @app.get("/api/v1/jobs", response_model=List[JobDetail], tags=["Jobs"])
 async def list_jobs(
@@ -750,10 +610,20 @@ async def list_jobs(
     experience: Optional[str] = Query(None, description="Filtrer par niveau d'expérience"),
     limit: int = Query(25, ge=1, le=100, description="Nombre maximum de résultats")
 ):
-    """Lister toutes les offres d'emploi disponibles"""
+    """
+    Lister toutes les offres d'emploi disponibles
+    
+    Args:
+        category: Filtrer par catégorie (optionnel)
+        remote: Filtrer par télétravail (optionnel)
+        limit: Nombre maximum de résultats (défaut: 25)
+        
+    Returns:
+        Liste des offres d'emploi
+    """
     try:
         dataset = get_jobs_dataset()
-        jobs = dataset['jobs']
+        jobs = dataset['jobs']  # ✅ ACCÈS CORRECT
         
         # Appliquer les filtres
         filtered_jobs = jobs
@@ -769,7 +639,8 @@ async def list_jobs(
                 job for job in filtered_jobs 
                 if job.get('remote_ok', False) == remote
             ]
-        
+
+        # Filtre expérience
         if experience:
             filtered_jobs = [
                 job for job in filtered_jobs 
@@ -797,7 +668,6 @@ async def list_jobs(
         return result
         
     except Exception as e:
-        logger.error(f"Erreur liste jobs: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la récupération des jobs: {str(e)}"
@@ -806,11 +676,20 @@ async def list_jobs(
 
 @app.get("/api/v1/jobs/{job_id}", response_model=JobDetail, tags=["Jobs"])
 async def get_job(job_id: str):
-    """Obtenir les détails d'une offre d'emploi spécifique"""
+    """
+    Obtenir les détails d'une offre d'emploi spécifique
+    
+    Args:
+        job_id: Identifiant du job (ex: job_001)
+        
+    Returns:
+        Détails complets du job
+    """
     try:
         dataset = get_jobs_dataset()
         jobs = dataset['jobs']
         
+        # Rechercher le job
         job = next((j for j in jobs if j['job_id'] == job_id), None)
         
         if job is None:
@@ -834,7 +713,6 @@ async def get_job(job_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur get job: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la récupération du job: {str(e)}"
@@ -843,7 +721,12 @@ async def get_job(job_id: str):
 
 @app.get("/api/v1/stats", response_model=StatsResponse, tags=["Stats"])
 async def get_stats():
-    """Obtenir des statistiques sur le système"""
+    """
+    Obtenir des statistiques sur le système
+    
+    Returns:
+        Statistiques générales (jobs, compétences, modèles)
+    """
     try:
         dataset = get_jobs_dataset()
         jobs = dataset['jobs']
@@ -870,16 +753,19 @@ async def get_stats():
         }
         
     except Exception as e:
-        logger.error(f"Erreur stats: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la récupération des statistiques: {str(e)}"
         )
 
-
 @app.get("/api/v1/faiss-stats", tags=["Stats"])
 async def get_faiss_stats():
-    """Obtenir des statistiques sur l'index FAISS"""
+    """
+    Obtenir des statistiques sur l'index FAISS
+    
+    Returns:
+        Statistiques de l'index vectoriel
+    """
     try:
         vector_store = get_vector_store()
         stats = vector_store.get_stats()
@@ -893,76 +779,29 @@ async def get_faiss_stats():
         }
         
     except Exception as e:
-        logger.error(f"Erreur faiss stats: {e}")
         return JSONResponse(
             status_code=500,
             content={"detail": f"Erreur lors de la récupération des stats FAISS: {str(e)}"}
         )
-
-
-@app.get("/api/v1/history/cv-analyses", tags=["History"])
-async def get_cv_analyses_history(limit: int = Query(10, ge=1, le=100)):
-    """Récupérer l'historique des analyses de CV"""
-    try:
-        db = get_db_manager()
-        analyses = db.get_recent_cv_analyses(limit=limit)
-        
-        return {
-            "total": len(analyses),
-            "analyses": analyses
-        }
-        
-    except Exception as e:
-        logger.error(f"Erreur history cv-analyses: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur BDD: {str(e)}")
-
-
-@app.get("/api/v1/history/recommendations/{cv_analysis_id}", tags=["History"])
-async def get_recommendations_history(cv_analysis_id: int):
-    """Récupérer les recommandations d'une analyse CV"""
-    try:
-        db = get_db_manager()
-        recommendations = db.get_recommendations_for_cv(cv_analysis_id)
-        
-        if not recommendations:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Aucune recommandation trouvée pour l'analyse {cv_analysis_id}"
-            )
-        
-        return {
-            "cv_analysis_id": cv_analysis_id,
-            "total_recommendations": len(recommendations),
-            "recommendations": recommendations
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Erreur history recommendations: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur BDD: {str(e)}")
-
-
-@app.get("/api/v1/stats/database", tags=["Statistics"])
-async def get_database_statistics():
-    """Statistiques globales de la base de données"""
-    try:
-        db = get_db_manager()
-        stats = db.get_statistics()
-        
-        return {
-            "database_stats": stats,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Erreur database stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Erreur BDD: {str(e)}")
-
-
+    
 @app.post("/api/v1/simulate-interview", response_model=InterviewResponse, tags=["Interview"])
 async def simulate_interview(request: InterviewRequest):
-    """Générer des questions d'entretien personnalisées avec Groq"""
+    """
+    Générer des questions d'entretien personnalisées avec Groq (Llama 3.1 70B)
+    
+    **Workflow:**
+    1. Récupération de l'offre d'emploi
+    2. Génération de questions RH et techniques par LLM
+    3. Questions adaptées au profil candidat
+    
+    Args:
+        cv_skills: Compétences du candidat
+        job_id: ID de l'offre ciblée
+        num_questions: Nombre de questions (défaut: 8)
+        
+    Returns:
+        Questions RH et techniques générées par IA
+    """
     try:
         # Récupérer l'offre
         dataset = get_jobs_dataset()
@@ -985,34 +824,6 @@ async def simulate_interview(request: InterviewRequest):
             num_questions=request.num_questions
         )
         
-        # ====================================================================
-        # SAUVEGARDE DANS POSTGRESQL
-        # ====================================================================
-        try:
-            db = get_db_manager()
-            
-            cv_analysis_id = db.save_cv_analysis(
-                cv_filename="interview_simulation.pdf",
-                cv_text="",
-                technical_skills=request.cv_skills,
-                soft_skills=[],
-                user_id=None
-            )
-            
-            simulation_id = db.save_interview_simulation(
-                cv_analysis_id=cv_analysis_id,
-                job_id=request.job_id,
-                questions=questions,
-                answers=[],
-                scores=[],
-                average_score=0.0
-            )
-            
-            logger.info(f"✅ Simulation d'entretien sauvegardée (ID: {simulation_id})")
-            
-        except Exception as e:
-            logger.error(f"⚠️ Erreur sauvegarde simulation: {e}")
-        
         return {
             "job_title": job['title'],
             "rh_questions": questions['rh_questions'],
@@ -1023,7 +834,6 @@ async def simulate_interview(request: InterviewRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur génération questions: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur génération questions : {str(e)}"
@@ -1032,14 +842,32 @@ async def simulate_interview(request: InterviewRequest):
 
 @app.post("/api/v1/evaluate-answer", response_model=AnswerEvaluationResponse, tags=["Interview"])
 async def evaluate_answer(request: AnswerEvaluationRequest):
-    """Évaluer la réponse d'un candidat avec Groq"""
+    """
+    Évaluer la réponse d'un candidat avec Groq (Llama 3.1 70B)
+    
+    **Workflow:**
+    1. Analyse de la réponse par LLM
+    2. Scoring automatique (0-100)
+    3. Génération de feedback personnalisé
+    
+    Args:
+        question: Question posée
+        answer: Réponse du candidat
+        question_type: Type de question (présentation, technique, etc.)
+        target_skill: Compétence évaluée (optionnel)
+        
+    Returns:
+        Score, feedback et recommandations d'amélioration
+    """
     try:
+        # Validation
         if not request.answer or len(request.answer.strip()) < 10:
             raise HTTPException(
                 status_code=400,
                 detail="La réponse est trop courte (minimum 10 caractères)"
             )
         
+        # Évaluer la réponse avec Groq
         simulator = get_interview_simulator()
         
         evaluation = simulator.evaluate_answer(
@@ -1054,92 +882,121 @@ async def evaluate_answer(request: AnswerEvaluationRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur évaluation: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur évaluation : {str(e)}"
         )
 
-
-@app.post("/api/v1/search", tags=["Jobs"])
-async def search_jobs(request: SearchRequest):
-    """Rechercher des offres d'emploi par similarité sémantique"""
+@app.post("/api/v1/ml-predict", response_model=MLPredictResponse, tags=["ML"])
+async def ml_predict(request: MLPredictRequest):
+    """
+    🤖 Prédiction directe avec le modèle XGBoost
+    
+    **Sans upload de CV PDF** — utilise directement les skills fournis.
+    
+    **Workflow:**
+    1. Récupération de l'offre d'emploi via job_id
+    2. Calcul des 15 features ML
+    3. Prédiction XGBoost (No Fit / Partial Fit / Perfect Fit)
+    
+    Args:
+        cv_technical_skills: Skills techniques du CV
+        cv_soft_skills: Soft skills du CV
+        job_id: ID de l'offre ciblée
+        
+    Returns:
+        Prédiction ML avec probabilités et features utilisées
+    """
     try:
-        vector_store = get_vector_store()
-        
-        results = vector_store.search(
-            cv_skills=[],
-            cv_text=request.query,
-            top_k=request.top_k
+        # 1. Vérifier que le modèle ML est chargé
+        ml_predictor = get_ml_predictor()
+        if not ml_predictor.is_loaded:
+            raise HTTPException(
+                status_code=503,
+                detail="Modèle ML non disponible. Lance : python mlops/train_and_log.py"
+            )
+
+        # 2. Récupérer l'offre d'emploi
+        dataset = get_jobs_dataset()
+        job = next(
+            (j for j in dataset['jobs'] if j['job_id'] == request.job_id),
+            None
         )
-        
-        formatted_results = []
-        for job, score in results:
-            formatted_results.append({
-                "job_id": job['job_id'],
-                "title": job['title'],
-                "company": job['company'],
-                "location": job['location'],
-                "remote": job.get('remote_ok', False),
-                "experience_required": job['experience'],
-                "score": float(score) * 100,
-                "description": job['description'][:200] + "..."
-            })
-        
+        if not job:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Offre '{request.job_id}' introuvable"
+            )
+
+        # 3. Préparer les skills CV
+        cv_skills = request.cv_technical_skills + request.cv_soft_skills
+        if not cv_skills:
+            raise HTTPException(
+                status_code=400,
+                detail="Au moins une compétence est requise"
+            )
+
+        # 4. Calculer le matching avec JobMatcher (pour skills_details)
+        matcher = get_job_matcher()
+        detailed_score = matcher.calculate_job_match_score(cv_skills, job)
+        all_job_skills = matcher.extract_job_skills(job)
+
+        # 5. Séparer skills techniques et soft du job
+        known_technical = set(s.lower() for s in matcher.skills_db.get('technical_skills', []))
+        known_soft = set(s.lower() for s in matcher.skills_db.get('soft_skills', []))
+
+        job_technical_skills = [s for s in all_job_skills if s.lower() in known_technical]
+        job_soft_skills = [s for s in all_job_skills if s.lower() in known_soft]
+        categorized = set(job_technical_skills + job_soft_skills)
+        job_technical_skills += [s for s in all_job_skills if s not in categorized]
+
+        # 6. Texte brut du job
+        job_raw_text = " ".join([
+            job.get('title', ''),
+            job.get('description', ''),
+            " ".join(job.get('requirements', [])),
+            " ".join(job.get('nice_to_have', []))
+        ]).strip()
+
+        # 7. Texte brut du CV (depuis les skills)
+        cv_raw_text = " ".join(cv_skills)
+
+        # 8. Calculer les features ML
+        ml_features = ml_predictor.compute_features(
+            cv_technical_skills=request.cv_technical_skills,
+            cv_soft_skills=request.cv_soft_skills,
+            job_technical_skills=job_technical_skills,
+            job_soft_skills=job_soft_skills,
+            skills_details=detailed_score['skills_details'],
+            cv_raw_text=cv_raw_text,
+            job_raw_text=job_raw_text,
+            sentence_model=matcher.model
+        )
+
+        # 9. Prédiction ML
+        ml_result = ml_predictor.predict(ml_features)
+
         return {
-            "query": request.query,
-            "results": formatted_results,
-            "count": len(formatted_results)
+            "job_id": request.job_id,
+            "job_title": job['title'],
+            "ml_label": ml_result['ml_label'],
+            "ml_score": ml_result['ml_score'],
+            "ml_probabilities": ml_result['ml_probabilities'],
+            "features_used": ml_features,
+            "model_info": {
+                "model_type": "XGBoost Classifier",
+                "accuracy": "70%",
+                "classes": ["No Fit", "Partial Fit", "Perfect Fit"],
+                "nb_features": 15
+            }
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Erreur search: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Erreur lors de la recherche: {str(e)}"
-        )
-
-
-@app.post("/api/v1/match", tags=["Jobs"])
-async def match_cv(request: MatchRequest):
-    """Matcher un texte de CV avec les meilleures offres"""
-    try:
-        extractor = get_skills_extractor()
-        skills_result = extractor.extract_from_cv(request.cv_text)
-        cv_skills = skills_result['technical_skills'] + skills_result['soft_skills']
-        
-        vector_store = get_vector_store()
-        results = vector_store.search(
-            cv_skills=cv_skills,
-            cv_text=request.cv_text,
-            top_k=request.top_k
-        )
-        
-        matches = []
-        for job, score in results:
-            matches.append({
-                "job_id": job['job_id'],
-                "title": job['title'],
-                "company": job['company'],
-                "location": job['location'],
-                "remote": job.get('remote_ok', False),
-                "experience_required": job['experience'],
-                "score": float(score) * 100,
-                "description": job['description'][:200] + "..."
-            })
-        
-        return {
-            "cv_summary": request.cv_text[:200] + "...",
-            "cv_skills_found": len(cv_skills),
-            "matches": matches,
-            "count": len(matches)
-        }
-        
-    except Exception as e:
-        logger.error(f"Erreur match: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur lors du matching: {str(e)}"
+            detail=f"Erreur prédiction ML : {str(e)}"
         )
 
 # ============================================================================
@@ -1161,6 +1018,7 @@ async def internal_error_handler(request, exc):
         content={"detail": "Erreur interne du serveur. Consultez les logs."}
     )
 
+
 # ============================================================================
 # ÉVÉNEMENTS DE DÉMARRAGE/ARRÊT
 # ============================================================================
@@ -1168,69 +1026,44 @@ async def internal_error_handler(request, exc):
 @app.on_event("startup")
 async def startup_event():
     """Actions au démarrage de l'API"""
-    logger.info("="*60)
-    logger.info("🚀 DÉMARRAGE DE L'API")
-    logger.info("="*60)
+    print("\n" + "="*60)
+    print("🚀 DÉMARRAGE DE L'API")
+    print("="*60)
     
     # Vérifier que les fichiers nécessaires existent
     if not JOBS_DATASET_PATH.exists():
-        logger.warning(f"⚠️  Dataset d'offres manquant: {JOBS_DATASET_PATH}")
+        print("⚠️  ATTENTION : Dataset d'offres manquant")
+        print(f"   Chemin attendu : {JOBS_DATASET_PATH}")
+        print("   Exécutez : notebooks/04_job_generation.ipynb")
     
     if not SKILLS_DB_PATH.exists():
-        logger.warning(f"⚠️  Base de compétences manquante: {SKILLS_DB_PATH}")
+        print("⚠️  ATTENTION : Base de compétences manquante")
+        print(f"   Chemin attendu : {SKILLS_DB_PATH}")
+    
+    # ✅ PRÉ-CHARGER FAISS AU DÉMARRAGE
+    print("\n⏳ Pré-chargement du vector store FAISS...")
+    try:
+        _ = get_vector_store()  # Force le chargement
+        print("✅ FAISS chargé avec succès")
+    except Exception as e:
+        print(f"⚠️  Erreur FAISS : {e}")
 
-    # ✅ AJOUTER : Pré-charger le modèle ML
-    logger.info("⏳ Chargement des modèles...")
-    
+    # ✅ Pré-charger le modèle ML
+    print("\n⏳ Pré-chargement du modèle XGBoost...")
     try:
-        # Forcer le chargement du JobMatcher
-        _ = get_job_matcher()
-        logger.info("✅ JobMatcher chargé")
-    except Exception as e:
-        logger.error(f"❌ Erreur JobMatcher : {e}")
-    
-    try:
-        # Forcer le chargement du SkillsExtractor
-        _ = get_skills_extractor()
-        logger.info("✅ SkillsExtractor chargé")
-    except Exception as e:
-        logger.error(f"❌ Erreur SkillsExtractor : {e}")
-    
-    try:
-        # Forcer le chargement du modèle ML
-        ml_model = get_ml_classifier()
-        if ml_model is not None:
-            logger.info("✅ Modèle ML chargé avec succès")
+        ml = get_ml_predictor()
+        if ml.is_loaded:
+            print("✅ Modèle XGBoost chargé avec succès")
         else:
-            logger.warning("⚠️ Modèle ML non disponible (fonctionnement en mode dégradé)")
+            print("⚠️  Modèle XGBoost non disponible (lance train_and_log.py)")
     except Exception as e:
-        logger.error(f"❌ Erreur chargement modèle ML : {e}")
-    
-    # Pré-charger FAISS au démarrage
-    logger.info("⏳ Pré-chargement du vector store FAISS...")
-    try:
-        _ = get_vector_store()
-        logger.info("✅ FAISS chargé avec succès")
-    except Exception as e:
-        logger.error(f"⚠️  Erreur FAISS : {e}")
-    
-    logger.info("✅ API prête à recevoir des requêtes")
-    logger.info("📖 Documentation : http://127.0.0.1:8000/docs")
-    logger.info("="*60)
+        print(f"⚠️  Erreur ML : {e}")
 
+    print("\n✅ API prête à recevoir des requêtes")
+    print("📖 Documentation : http://127.0.0.1:8000/docs")
+    print("="*60 + "\n")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Actions à l'arrêt de l'API"""
-    logger.info("🔄 Arrêt de l'API - Fermeture de la connexion PostgreSQL...")
-    close_db_connection()
-    logger.info("✅ API arrêtée proprement")
-
-
-# ============================================================================
-# POINT D'ENTRÉE POUR UVICORN
-# ============================================================================
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    print("\n🛑 Arrêt de l'API")

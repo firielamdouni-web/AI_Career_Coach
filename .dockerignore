@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+env/
+venv/
+.venv/
+
+# Git
+.git/
+.github/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Jupyter (NE PAS copier les notebooks!)
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
+# Données brutes
+data/faiss_index/
+data/**/*.pdf
+mlops/mlflow_tracking/
+mlops/mlflow_models/
+mlartifacts/
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+
+# Logs
+logs/
+*.log
+
+# Docs
+README.md
+LICENSE
+.env.example
+
+# Cache
+.cache/
+*.pkg
+wheels/
