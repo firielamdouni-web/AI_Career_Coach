@@ -36,10 +36,7 @@ jobs:
 
       - name: Run flake8
         run: |
-          flake8 src/ tests/ \
-            --max-line-length=120 \
-            --exclude=__pycache__,.venv \
-            --ignore=E501,W503
+          flake8 src/ tests/ --config=.flake8
 
   # ─────────────────────────────────────────
   # JOB 2 : Tests

@@ -1,0 +1,16 @@
+[flake8]
+max-line-length = 120
+extend-ignore =
+    F541,
+    E131,
+    E501,
+    W291,
+    W293,
+per-file-ignores =
+    tests/*: F401, F811
+exclude =
+    __pycache__,
+    .venv,
+    notebooks/,
+    src/compute_features_from_huggingface.py
+    
