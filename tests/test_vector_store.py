@@ -43,7 +43,7 @@ CV_SKILLS = ["Python", "Machine Learning", "SQL"]
 @pytest.fixture
 def vector_store():
     """Fixture JobVectorStore avec SentenceTransformer mocké"""
-    with patch('src.vector_store.SentenceTransformer') as mock_st:  
+    with patch('src.vector_store.SentenceTransformer') as mock_st:
         mock_model = MagicMock()
         mock_model.get_sentence_embedding_dimension.return_value = 64
 
@@ -206,7 +206,9 @@ class TestSaveLoad:
 
     def test_load_missing_index_raises(self, vector_store):
         with pytest.raises(FileNotFoundError):
-            vector_store.load("/nonexistent/path.index", "/nonexistent/meta.pkl")
+            vector_store.load(
+                "/nonexistent/path.index",
+                "/nonexistent/meta.pkl")
 
     def test_load_missing_metadata_raises(self, vector_store):
         with tempfile.TemporaryDirectory() as tmpdir:

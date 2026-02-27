@@ -41,10 +41,16 @@ MOCK_JOBS_DATASET = {
 }
 
 MOCK_SKILLS_DB = {
-    "technical_skills": ["Python", "SQL", "Docker", "TensorFlow", "Machine Learning"],
-    "soft_skills": ["Communication", "Teamwork"],
-    "variations": {}
-}
+    "technical_skills": [
+        "Python",
+        "SQL",
+        "Docker",
+        "TensorFlow",
+        "Machine Learning"],
+    "soft_skills": [
+        "Communication",
+        "Teamwork"],
+    "variations": {}}
 
 MOCK_CV_TEXT = "Python developer with experience in Machine Learning and SQL databases."
 
@@ -71,13 +77,13 @@ MOCK_MATCH_SCORE = {
 def client():
     """Client de test FastAPI avec tous les modules mockés"""
     with patch('src.api.get_jobs_dataset', return_value=MOCK_JOBS_DATASET), \
-         patch('src.api.get_cv_parser') as mock_parser, \
-         patch('src.api.get_skills_extractor') as mock_extractor, \
-         patch('src.api.get_job_matcher') as mock_matcher, \
-         patch('src.api.get_ml_predictor') as mock_ml, \
-         patch('src.api.get_vector_store') as mock_vs, \
-         patch('src.api.get_db_manager') as mock_db, \
-         patch('src.api.get_interview_simulator') as mock_sim:
+            patch('src.api.get_cv_parser') as mock_parser, \
+            patch('src.api.get_skills_extractor') as mock_extractor, \
+            patch('src.api.get_job_matcher') as mock_matcher, \
+            patch('src.api.get_ml_predictor') as mock_ml, \
+            patch('src.api.get_vector_store') as mock_vs, \
+            patch('src.api.get_db_manager') as mock_db, \
+            patch('src.api.get_interview_simulator') as mock_sim:
 
         # Parser CV
         mock_parser_inst = MagicMock()
@@ -276,7 +282,8 @@ class TestExtractSkills:
             files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
         )
         data = response.json()
-        expected_total = len(data["technical_skills"]) + len(data["soft_skills"])
+        expected_total = len(data["technical_skills"]
+                             ) + len(data["soft_skills"])
         assert data["total_skills"] == expected_total
 
 
@@ -334,22 +341,30 @@ class TestSimulateInterview:
     def test_simulate_interview_valid_job(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={"cv_skills": ["Python", "SQL"], "job_id": "job_001", "num_questions": 4}
-        )
+            json={
+                "cv_skills": [
+                    "Python",
+                    "SQL"],
+                "job_id": "job_001",
+                "num_questions": 4})
         assert response.status_code == 200
 
     def test_simulate_interview_invalid_job(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={"cv_skills": ["Python"], "job_id": "job_999", "num_questions": 4}
-        )
+            json={
+                "cv_skills": ["Python"],
+                "job_id": "job_999",
+                "num_questions": 4})
         assert response.status_code == 404
 
     def test_simulate_interview_returns_questions(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={"cv_skills": ["Python"], "job_id": "job_001", "num_questions": 4}
-        )
+            json={
+                "cv_skills": ["Python"],
+                "job_id": "job_001",
+                "num_questions": 4})
         data = response.json()
         assert "rh_questions" in data
         assert "technical_questions" in data
@@ -368,9 +383,7 @@ class TestEvaluateAnswer:
             json={
                 "question": "Parlez-moi de Python.",
                 "answer": "J'utilise Python depuis 2 ans pour faire du data science.",
-                "question_type": "technique"
-            }
-        )
+                "question_type": "technique"})
         assert response.status_code == 200
 
     def test_evaluate_answer_too_short_returns_400(self, client):
@@ -390,9 +403,7 @@ class TestEvaluateAnswer:
             json={
                 "question": "Parlez-moi de Python.",
                 "answer": "J'utilise Python depuis 2 ans pour faire du data science.",
-                "question_type": "technique"
-            }
-        )
+                "question_type": "technique"})
         data = response.json()
         assert "score" in data
         assert 0 <= data["score"] <= 100

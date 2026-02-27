@@ -36,8 +36,8 @@ CV_SKILLS_EMPTY = []
 def matcher():
     """Fixture JobMatcher avec modèle mocké"""
     with patch('src.job_matcher.SentenceTransformer') as mock_st, \
-         patch('builtins.open'), \
-         patch('json.load', return_value=MOCK_SKILLS_DB):
+            patch('builtins.open'), \
+            patch('json.load', return_value=MOCK_SKILLS_DB):
 
         mock_model = MagicMock()
         mock_model.get_sentence_embedding_dimension.return_value = 768
@@ -71,8 +71,10 @@ class TestJobMatcherApproach4:
 
     def test_good_profile_scores_higher_than_poor(self, matcher):
         """Un bon profil doit scorer plus haut qu'un mauvais profil"""
-        result_good = matcher.calculate_job_match_score(CV_SKILLS_GOOD, MOCK_JOB)
-        result_poor = matcher.calculate_job_match_score(CV_SKILLS_POOR, MOCK_JOB)
+        result_good = matcher.calculate_job_match_score(
+            CV_SKILLS_GOOD, MOCK_JOB)
+        result_poor = matcher.calculate_job_match_score(
+            CV_SKILLS_POOR, MOCK_JOB)
         assert result_good['score'] >= result_poor['score']
 
     def test_score_formula_is_coverage_quality_average(self, matcher):

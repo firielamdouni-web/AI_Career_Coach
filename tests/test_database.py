@@ -139,7 +139,8 @@ class TestSaveCVAnalysis:
             if "INSERT INTO cv_analyses" in str(c)
         )
         call_args = insert_call[0][1]  # 2e arg positionnel = tuple de valeurs
-        total_expected = len(MOCK_CV_DATA["technical_skills"]) + len(MOCK_CV_DATA["soft_skills"])
+        total_expected = len(
+            MOCK_CV_DATA["technical_skills"]) + len(MOCK_CV_DATA["soft_skills"])
         assert total_expected in call_args
 
 
@@ -161,7 +162,8 @@ class TestSaveJobRecommendation:
         db_manager.save_job_recommendation(**MOCK_JOB_REC_DATA)
 
         all_calls = db_manager.cursor.execute.call_args_list
-        assert any("INSERT INTO job_recommendations" in str(c) for c in all_calls)
+        assert any("INSERT INTO job_recommendations" in str(c)
+                   for c in all_calls)
 
     def test_save_recommendation_commits(self, db_manager):
         db_manager.cursor.fetchone.return_value = {"id": 1}
@@ -285,7 +287,8 @@ class TestSaveInterviewSimulation:
         db_manager.save_interview_simulation(**MOCK_INTERVIEW_DATA)
 
         all_calls = db_manager.cursor.execute.call_args_list
-        assert any("INSERT INTO interview_simulations" in str(c) for c in all_calls)
+        assert any("INSERT INTO interview_simulations" in str(c)
+                   for c in all_calls)
 
     def test_save_simulation_rollback_on_error(self, db_manager):
         call_count = 0
@@ -383,7 +386,7 @@ class TestGetDbManagerSingleton:
         module._db_manager = None
 
         with patch('src.database.psycopg2.connect') as mock_connect, \
-             patch('src.database.os.getenv', return_value=MOCK_DATABASE_URL):
+                patch('src.database.os.getenv', return_value=MOCK_DATABASE_URL):
             mock_conn = MagicMock()
             mock_conn.closed = False
             mock_conn.cursor.return_value = MagicMock()

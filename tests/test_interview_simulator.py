@@ -41,7 +41,7 @@ def simulator():
     with patch('groq.Groq') as mock_groq:
         mock_client = MagicMock()
         mock_groq.return_value = mock_client
-        
+
         from src.interview_simulator import InterviewSimulator
         sim = InterviewSimulator(api_key="fake_key_for_testing")
         sim.client = mock_client
@@ -217,8 +217,9 @@ class TestEvaluateAnswer:
 
     def test_evaluate_adds_recommandations_if_missing(self, simulator):
         """Doit ajouter des recommandations si absentes du JSON"""
-        response_without_reco = {k: v for k, v in MOCK_EVALUATION_RESPONSE.items()
-                                  if k != "recommandations"}
+        response_without_reco = {
+            k: v for k,
+            v in MOCK_EVALUATION_RESPONSE.items() if k != "recommandations"}
         simulator.client.chat.completions.create.return_value = \
             _make_groq_response(response_without_reco)
 
@@ -240,23 +241,30 @@ class TestGenerateFinalFeedback:
 
     def test_feedback_decision_poor_score(self, simulator):
         """Score < 50 → décision 'À retravailler' (fallback)"""
-        simulator.client.chat.completions.create.side_effect = Exception("API error")
+        simulator.client.chat.completions.create.side_effect = Exception(
+            "API error")
 
-        evaluations = [{"score": 30, "points_forts": [], "points_amelioration": []}]
-        result = simulator.generate_final_feedback(evaluations, "Data Scientist")
+        evaluations = [
+            {"score": 30, "points_forts": [], "points_amelioration": []}]
+        result = simulator.generate_final_feedback(
+            evaluations, "Data Scientist")
         assert result["decision"] == "À retravailler"
 
     def test_feedback_decision_good_score(self, simulator):
         """Score > 75 → décision 'Excellent' (fallback)"""
-        simulator.client.chat.completions.create.side_effect = Exception("API error")
+        simulator.client.chat.completions.create.side_effect = Exception(
+            "API error")
 
-        evaluations = [{"score": 85, "points_forts": [], "points_amelioration": []}]
-        result = simulator.generate_final_feedback(evaluations, "Data Scientist")
+        evaluations = [
+            {"score": 85, "points_forts": [], "points_amelioration": []}]
+        result = simulator.generate_final_feedback(
+            evaluations, "Data Scientist")
         assert result["decision"] == "Excellent"
 
     def test_feedback_global_score_is_average(self, simulator):
         """global_score = moyenne des scores (fallback)"""
-        simulator.client.chat.completions.create.side_effect = Exception("API error")
+        simulator.client.chat.completions.create.side_effect = Exception(
+            "API error")
 
         evaluations = [
             {"score": 60, "points_forts": [], "points_amelioration": []},
@@ -271,7 +279,7 @@ class TestGetInterviewSimulatorSingleton:
     def test_singleton_returns_same_instance(self):
         """get_interview_simulator doit retourner la même instance"""
         with patch('groq.Groq'), \
-             patch('os.getenv', return_value="fake_key"):
+                patch('os.getenv', return_value="fake_key"):
             from src.interview_simulator import get_interview_simulator
             import src.interview_simulator as module
             module._interview_simulator = None  # reset

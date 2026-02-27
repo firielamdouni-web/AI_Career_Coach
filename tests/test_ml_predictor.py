@@ -30,7 +30,7 @@ MOCK_FEATURES = {
 def predictor():
     """Fixture MLPredictor avec modèle mocké"""
     with patch('pathlib.Path.exists', return_value=True), \
-         patch('joblib.load') as mock_joblib:
+            patch('joblib.load') as mock_joblib:
 
         mock_model = MagicMock()
         mock_model.predict.return_value = np.array([2])  # Perfect Fit
@@ -72,7 +72,8 @@ class TestMLPredictor:
     def test_predict_perfect_fit(self, predictor):
         """Test prédiction Perfect Fit"""
         predictor.model.predict.return_value = np.array([2])
-        predictor.model.predict_proba.return_value = np.array([[0.05, 0.15, 0.80]])
+        predictor.model.predict_proba.return_value = np.array(
+            [[0.05, 0.15, 0.80]])
 
         result = predictor.predict(MOCK_FEATURES)
 
@@ -84,7 +85,8 @@ class TestMLPredictor:
     def test_predict_partial_fit(self, predictor):
         """Test prédiction Partial Fit"""
         predictor.model.predict.return_value = np.array([1])
-        predictor.model.predict_proba.return_value = np.array([[0.10, 0.75, 0.15]])
+        predictor.model.predict_proba.return_value = np.array(
+            [[0.10, 0.75, 0.15]])
 
         result = predictor.predict(MOCK_FEATURES)
 
@@ -94,7 +96,8 @@ class TestMLPredictor:
     def test_predict_no_fit(self, predictor):
         """Test prédiction No Fit"""
         predictor.model.predict.return_value = np.array([0])
-        predictor.model.predict_proba.return_value = np.array([[0.85, 0.10, 0.05]])
+        predictor.model.predict_proba.return_value = np.array(
+            [[0.85, 0.10, 0.05]])
 
         result = predictor.predict(MOCK_FEATURES)
 
@@ -111,7 +114,7 @@ class TestMLPredictor:
     def test_predict_feature_order(self, predictor):
         """Test que les features sont dans le bon ordre"""
         predictor.predict(MOCK_FEATURES)
-        
+
         call_args = predictor.scaler.transform.call_args[0][0]
         assert len(call_args[0]) == 15
         assert call_args[0][0] == MOCK_FEATURES['coverage']

@@ -7,22 +7,21 @@ from src.skills_extractor import SkillsExtractor
 
 
 MOCK_SKILLS_DB = {
-    "technical_skills": ["Python", "Machine Learning", "SQL", "Docker", "TensorFlow"],
-    "soft_skills": ["Communication", "Teamwork", "Leadership"],
-    "variations": {
-        "python": ["python", "py"],
-        "machine learning": ["machine learning", "ml"]
-    }
-}
+    "technical_skills": [
+        "Python", "Machine Learning", "SQL", "Docker", "TensorFlow"], "soft_skills": [
+            "Communication", "Teamwork", "Leadership"], "variations": {
+                "python": [
+                    "python", "py"], "machine learning": [
+                        "machine learning", "ml"]}}
 
 
 @pytest.fixture
 def extractor():
     """Fixture pour créer un SkillsExtractor mocké"""
     with patch('spacy.load') as mock_spacy, \
-         patch('builtins.open'), \
-         patch('json.load', return_value=MOCK_SKILLS_DB):
-        
+            patch('builtins.open'), \
+            patch('json.load', return_value=MOCK_SKILLS_DB):
+
         mock_nlp = MagicMock()
         mock_doc = MagicMock()
         mock_doc.ents = []
@@ -80,7 +79,7 @@ class TestSkillsExtractor:
     def test_extract_from_cv(self, extractor):
         """Test extraction complète depuis CV"""
         cv_text = "Python developer with Machine Learning experience. Good Communication skills."
-        
+
         mock_doc = MagicMock()
         mock_doc.ents = []
         extractor.nlp.return_value = mock_doc
@@ -93,12 +92,13 @@ class TestSkillsExtractor:
         assert "Python" in result['technical_skills']
         assert "Machine Learning" in result['technical_skills']
         assert "Communication" in result['soft_skills']
-        assert result['total_skills'] == len(result['technical_skills']) + len(result['soft_skills'])
+        assert result['total_skills'] == len(
+            result['technical_skills']) + len(result['soft_skills'])
 
     def test_extract_from_cv_no_skills(self, extractor):
         """Test extraction sans skills reconnus"""
         cv_text = "I am a student looking for opportunities"
-        
+
         mock_doc = MagicMock()
         mock_doc.ents = []
         extractor.nlp.return_value = mock_doc

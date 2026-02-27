@@ -37,9 +37,9 @@ MOCK_JOB = {
 def matcher():
     """Fixture pour créer un JobMatcher mocké"""
     with patch('src.job_matcher.SentenceTransformer') as mock_st, \
-         patch('builtins.open'), \
-         patch('json.load', return_value=MOCK_SKILLS_DB), \
-         patch('pathlib.Path.exists', return_value=True):
+            patch('builtins.open'), \
+            patch('json.load', return_value=MOCK_SKILLS_DB), \
+            patch('pathlib.Path.exists', return_value=True):
 
         mock_model = MagicMock()
         # Retourner des embeddings factices (768-dim)
@@ -96,7 +96,8 @@ class TestJobMatcher:
 
     def test_calculate_skills_similarity_returns_dict(self, matcher):
         """Test que calculate_skills_similarity retourne le bon format"""
-        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(768)
+        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(
+            768)
 
         result = matcher.calculate_skills_similarity(
             ["python", "machine learning"], MOCK_JOB
@@ -110,7 +111,8 @@ class TestJobMatcher:
 
     def test_calculate_job_match_score_format(self, matcher):
         """Test format de retour de calculate_job_match_score"""
-        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(768)
+        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(
+            768)
 
         result = matcher.calculate_job_match_score(["python"], MOCK_JOB)
 
@@ -122,7 +124,8 @@ class TestJobMatcher:
 
     def test_calculate_job_match_score_skills_details(self, matcher):
         """Test structure skills_details"""
-        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(768)
+        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(
+            768)
 
         result = matcher.calculate_job_match_score(["python", "sql"], MOCK_JOB)
         details = result['skills_details']
@@ -146,7 +149,8 @@ class TestJobMatcher:
     def test_rank_jobs_sorted(self, matcher):
         """Test que rank_jobs retourne les offres triées"""
         job2 = {**MOCK_JOB, "job_id": "job_002", "title": "Senior ML Engineer"}
-        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(768)
+        matcher.model.encode.side_effect = lambda skills, **kwargs: np.random.rand(
+            768)
 
         results = matcher.rank_jobs(["python", "sql"], [MOCK_JOB, job2])
 
