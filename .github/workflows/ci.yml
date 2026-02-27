@@ -70,8 +70,12 @@ jobs:
 
       - name: Install dependencies
         run: |
+          pip install --upgrade pip
           pip install -r requirements/base.txt
+          pip install -r requirements/api.txt
           pip install pytest pytest-cov pytest-asyncio
+          pip install fastapi httpx PyPDF2 psycopg2-binary sentence-transformers joblib spacy
+          python -m spacy download en_core_web_sm
 
       - name: Run tests with coverage
         run: |
