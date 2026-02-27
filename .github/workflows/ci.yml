@@ -109,8 +109,8 @@ jobs:
       - name: Build API image
         uses: docker/build-push-action@v6
         with:
-          context: ./AI_Career_Coach
-          file: ./AI_Career_Coach/docker/api.Dockerfile
+          context: .
+          file: ./docker/api.Dockerfile
           push: false
           tags: ai-career-coach-api:${{ github.sha }}
           cache-from: type=gha
@@ -119,8 +119,8 @@ jobs:
       - name: Build Streamlit image
         uses: docker/build-push-action@v6
         with:
-          context: ./AI_Career_Coach
-          file: ./AI_Career_Coach/docker/streamlit.Dockerfile
+          context: .
+          file: ./docker/streamlit.Dockerfile
           push: false
           tags: ai-career-coach-streamlit:${{ github.sha }}
           cache-from: type=gha
@@ -148,8 +148,8 @@ jobs:
       - name: Push API image
         uses: docker/build-push-action@v6
         with:
-          context: ./AI_Career_Coach
-          file: ./AI_Career_Coach/docker/api.Dockerfile
+          context: .
+          file: ./docker/api.Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/ai-career-coach-api:latest
@@ -160,8 +160,8 @@ jobs:
       - name: Push Streamlit image
         uses: docker/build-push-action@v6
         with:
-          context: ./AI_Career_Coach
-          file: ./AI_Career_Coach/docker/streamlit.Dockerfile
+          context: .
+          file: ./docker/streamlit.Dockerfile
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/ai-career-coach-streamlit:latest
