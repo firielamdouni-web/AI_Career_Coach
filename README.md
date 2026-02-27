@@ -95,7 +95,7 @@ AI_Career_Coach/
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/Robert-ung/AI_Career_Coach/tree/main
+git clone https://github.com/firielamdouni-web/AI_Career_Coach/tree/Firiel
 cd AI_Career_Coach
 
 # 2. Configurer les variables d'environnement
@@ -148,7 +148,7 @@ docker-compose down -v        # Arrêter et supprimer les volumes (reset complet
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/firielamdouni-web/AI_Career_Coach.git
+git clone https://github.com/firielamdouni-web/AI_Career_Coach/tree/Firiel
 cd AI_Career_Coach
 
 # 2. Créer l'environnement virtuel
@@ -462,3 +462,8 @@ mlflow ui --backend-store-uri file:./mlops/mlflow_tracking --port 5000
 
 
 ---
+
+
+[![CI/CD Pipeline](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml/badge.svg)](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml)
+[![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-310/)
+[![Tests](https://img.shields.io/badge/tests-149%20passed-brightgreen.svg)]() 
