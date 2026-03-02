@@ -146,15 +146,15 @@ def _normalize_scraped_job(row: Dict) -> Dict:
     job['nice_to_have'] = []
 
     # ── champs obligatoires pour JobMatcher ───────────────────────────────
-    job['title']       = job.get('title') or 'Sans titre'
-    job['company']     = job.get('company') or 'Inconnue'
-    job['location']    = job.get('location') or 'Non spécifié'
+    job['title'] = job.get('title') or 'Sans titre'
+    job['company'] = job.get('company') or 'Inconnue'
+    job['location'] = job.get('location') or 'Non spécifié'
     job['description'] = job.get('description') or ''
-    job['experience']  = job.get('experience') or 'Non spécifié'
-    job['remote_ok']   = bool(job.get('is_remote') or job.get('remote_ok'))
-    job['url']         = job.get('url') or ''
-    job['source']      = job.get('source') or 'scraped'
-    job['is_scraped']  = True
+    job['experience'] = job.get('experience') or 'Non spécifié'
+    job['remote_ok'] = bool(job.get('is_remote') or job.get('remote_ok'))
+    job['url'] = job.get('url') or ''
+    job['source'] = job.get('source') or 'scraped'
+    job['is_scraped'] = True
 
     return job
 
@@ -583,28 +583,28 @@ async def recommend_jobs(
                     logger.warning(f"ML error: {e}")
 
             detailed_results.append({
-                'job_id':          job['job_id'],
-                'title':           job['title'],
-                'company':         job['company'],
-                'location':        job.get('location', 'Non spécifié'),
-                'remote_ok':       job.get('remote_ok', False),
-                'experience':      job.get('experience', 'Non spécifié'),
-                'description':     job.get('description', ''),
-                'requirements':    job.get('requirements', []),
-                'url':             job.get('url', ''),
-                'source':          job.get('source', 'local'),
-                'is_scraped':      job.get('is_scraped', False),
+                'job_id': job['job_id'],
+                'title': job['title'],
+                'company': job['company'],
+                'location': job.get('location', 'Non spécifié'),
+                'remote_ok': job.get('remote_ok', False),
+                'experience': job.get('experience', 'Non spécifié'),
+                'description': job.get('description', ''),
+                'requirements': job.get('requirements', []),
+                'url': job.get('url', ''),
+                'source': job.get('source', 'local'),
+                'is_scraped': job.get('is_scraped', False),
                 'employment_type': job.get('employment_type'),
-                'salary_min':      job.get('salary_min'),
-                'salary_max':      job.get('salary_max'),
-                'score':           detailed_score['score'],
-                'skills_details':  detailed_score['skills_details'],
+                'salary_min': job.get('salary_min'),
+                'salary_max': job.get('salary_max'),
+                'score': detailed_score['score'],
+                'skills_details': detailed_score['skills_details'],
                 'matching_skills': matching_skills,
-                'missing_skills':  missing_skills,
-                'ml_label':        ml_result.get('ml_label', 'N/A'),
-                'ml_score':        ml_result.get('ml_score'),
+                'missing_skills': missing_skills,
+                'ml_label': ml_result.get('ml_label', 'N/A'),
+                'ml_score': ml_result.get('ml_score'),
                 'ml_probabilities': ml_result.get('ml_probabilities'),
-                'ml_available':    ml_result.get('ml_available', False),
+                'ml_available': ml_result.get('ml_available', False),
             })
 
         # ── 6. Trier + filtrer ───────────────────────────────────────────
@@ -615,29 +615,29 @@ async def recommend_jobs(
         recommendations = []
         for job in filtered:
             recommendations.append({
-                "job_id":           job['job_id'],
-                "title":            job['title'],
-                "company":          job['company'],
-                "location":         job['location'],
-                "remote":           job['remote_ok'],
+                "job_id": job['job_id'],
+                "title": job['title'],
+                "company": job['company'],
+                "location": job['location'],
+                "remote": job['remote_ok'],
                 "experience_required": job['experience'],
-                "score":            float(job['score']),
-                "skills_match":     float(job['score']),
+                "score": float(job['score']),
+                "skills_match": float(job['score']),
                 "experience_match": 0,
-                "location_match":   0,
+                "location_match": 0,
                 "competition_factor": 0,
-                "matching_skills":  job['matching_skills'],
-                "missing_skills":   job['missing_skills'],
-                "url":              job.get('url', ''),
-                "source":           job.get('source', 'local'),
-                "is_scraped":       job.get('is_scraped', False),
-                "employment_type":  job.get('employment_type'),
-                "salary_min":       float(job['salary_min']) if job.get('salary_min') else None,
-                "salary_max":       float(job['salary_max']) if job.get('salary_max') else None,
-                "ml_label":         job['ml_label'],
-                "ml_score":         job['ml_score'],
+                "matching_skills": job['matching_skills'],
+                "missing_skills": job['missing_skills'],
+                "url": job.get('url', ''),
+                "source": job.get('source', 'local'),
+                "is_scraped": job.get('is_scraped', False),
+                "employment_type": job.get('employment_type'),
+                "salary_min": float(job['salary_min']) if job.get('salary_min') else None,
+                "salary_max": float(job['salary_max']) if job.get('salary_max') else None,
+                "ml_label": job['ml_label'],
+                "ml_score": job['ml_score'],
                 "ml_probabilities": job['ml_probabilities'],
-                "ml_available":     job['ml_available'],
+                "ml_available": job['ml_available'],
             })
 
         # ── 8. Sauvegarder en DB ─────────────────────────────────────────
@@ -663,11 +663,11 @@ async def recommend_jobs(
             cv_id = None
 
         return {
-            "recommendations":     recommendations,
+            "recommendations": recommendations,
             "total_jobs_analyzed": len(candidate_jobs),
-            "cv_skills_count":     len(cv_skills),
-            "local_jobs_count":    local_count,
-            "scraped_jobs_count":  scraped_count,
+            "cv_skills_count": len(cv_skills),
+            "local_jobs_count": local_count,
+            "scraped_jobs_count": scraped_count,
         }
 
     except HTTPException:
@@ -715,9 +715,9 @@ async def simulate_interview(request: InterviewRequest):
                     row = dict(row)
                     requirements = _parse_skills_field(row.get('required_skills'))
                     job = {
-                        "job_id":       row.get('job_id'),
-                        "title":        row.get('title', ''),
-                        "description":  row.get('description', ''),
+                        "job_id": row.get('job_id'),
+                        "title": row.get('title', ''),
+                        "description": row.get('description', ''),
                         "requirements": requirements,
                     }
             except Exception as e:
@@ -740,10 +740,10 @@ async def simulate_interview(request: InterviewRequest):
             num_questions=request.num_questions
         )
         return {
-            "job_title":           job.get('title', ''),
-            "rh_questions":        questions['rh_questions'],
+            "job_title": job.get('title', ''),
+            "rh_questions": questions['rh_questions'],
             "technical_questions": questions['technical_questions'],
-            "total_questions":     len(questions['rh_questions']) + len(questions['technical_questions'])
+            "total_questions": len(questions['rh_questions']) + len(questions['technical_questions'])
         }
     except HTTPException:
         raise

@@ -97,28 +97,28 @@ class JobScraper:
     def _normalize_job(self, raw: Dict) -> Dict:
         """Normaliser un job JSearch vers notre format interne"""
         return {
-            "job_id":           raw.get("job_id", ""),
-            "title":            raw.get("job_title", ""),
-            "company":          raw.get("employer_name", ""),
-            "location":         self._extract_location(raw),
-            "description":      raw.get("job_description", ""),
-            "url":              raw.get("job_apply_link", ""),
-            "source":           raw.get("job_publisher", "").lower(),
-            "employment_type":  raw.get("job_employment_type", ""),
-            "is_remote":        raw.get("job_is_remote", False),
-            "salary_min":       raw.get("job_min_salary"),
-            "salary_max":       raw.get("job_max_salary"),
-            "required_skills":  self._extract_skills_from_description(
-                                    raw.get("job_description", "")
-                                ),
-            "scraped_at":       datetime.now().isoformat()
+            "job_id": raw.get("job_id", ""),
+            "title": raw.get("job_title", ""),
+            "company": raw.get("employer_name", ""),
+            "location": self._extract_location(raw),
+            "description": raw.get("job_description", ""),
+            "url": raw.get("job_apply_link", ""),
+            "source": raw.get("job_publisher", "").lower(),
+            "employment_type": raw.get("job_employment_type", ""),
+            "is_remote": raw.get("job_is_remote", False),
+            "salary_min": raw.get("job_min_salary"),
+            "salary_max": raw.get("job_max_salary"),
+            "required_skills": self._extract_skills_from_description(
+                raw.get("job_description", "")
+            ),
+            "scraped_at": datetime.now().isoformat()
         }
 
     def _extract_location(self, raw: Dict) -> str:
         """Construire la localisation depuis les champs JSearch"""
-        city    = raw.get("job_city", "")
+        city = raw.get("job_city", "")
         country = raw.get("job_country", "")
-        state   = raw.get("job_state", "")
+        state = raw.get("job_state", "")
 
         parts = [p for p in [city, state, country] if p]
         return ", ".join(parts) if parts else "Non précisé"
@@ -157,7 +157,7 @@ class JobScraper:
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ Erreur get_job_details : {e}")
             return None
-        
+
 # les méthodes de sauvegarde dans PostgreSQL et FAISS
 
     def search_and_save(
@@ -175,9 +175,9 @@ class JobScraper:
         # ── 1. Scraper ──────────────────────────────────────────────────────
         jobs = self.search_jobs(query=query, location=location, num_pages=num_pages)
 
-        saved_db    = 0
+        saved_db = 0
         saved_faiss = 0
-        errors      = []
+        errors = []
 
         # ── 2. Sauvegarder dans PostgreSQL ──────────────────────────────────
         if save_to_db and jobs:
@@ -203,12 +203,12 @@ class JobScraper:
 
         return {
             "total_scraped": len(jobs),
-            "saved_to_db":   saved_db,
+            "saved_to_db": saved_db,
             "saved_to_faiss": saved_faiss,
-            "errors":        errors,
-            "jobs":          jobs
+            "errors": errors,
+            "jobs": jobs
         }
-        
+
     def _save_jobs_to_db(self, db, jobs: List[Dict]) -> int:
         """Insérer les jobs dans PostgreSQL (ignore les doublons via job_id)"""
         saved = 0
@@ -236,7 +236,7 @@ class JobScraper:
                 logger.warning(f"⚠️ Job ignoré ({job.get('job_id')}) : {e}")
                 db.conn.rollback()
         return saved
-    
+
     def _save_jobs_to_faiss(self, vs, jobs: List[Dict]) -> int:
         """Indexer les descriptions de jobs dans FAISS"""
         saved = 0
@@ -249,7 +249,7 @@ class JobScraper:
             except Exception as e:
                 logger.warning(f"⚠️ Job non indexé ({job.get('job_id')}) : {e}")
         return saved
-    
+
 
 # ─────────────────────────────────────────
 # Singleton

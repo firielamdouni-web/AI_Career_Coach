@@ -31,7 +31,7 @@ def extractor():
         ext = SkillsExtractor.__new__(SkillsExtractor)
         ext.nlp = mock_nlp
         ext.skills_database = MOCK_SKILLS_DB
-        ext.model_name = "fr_core_news_sm" 
+        ext.model_name = "fr_core_news_sm"
         return ext
 
 

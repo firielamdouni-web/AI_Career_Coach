@@ -3,11 +3,15 @@ Base vectorielle FAISS pour recherche rapide d'offres d'emploi
 Indexation et recherche sémantique avec Sentence-Transformers
 """
 
+import json
+import logging
+from typing import Optional
 import faiss
 from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Tuple
 import pickle
 from pathlib import Path
+
 
 class JobVectorStore:
     """
@@ -233,58 +237,57 @@ class JobVectorStore:
             'dimension': self.dimension,
             'jobs_with_metadata': len(self.jobs_metadata)
         }
-        
+
     def add_job(self, job: Dict) -> bool:
         """
         Ajouter un job à l'index FAISS
-        
+
         Args:
             job: Dictionnaire contenant les informations du job
-            
+
         Returns:
             True si ajouté, False sinon
         """
         import logging
         logger = logging.getLogger(__name__)
-        
+
         try:
             if not job.get("description"):
                 return False
-                
+
             # Créer un embedding pour ce job
             embedding = self.model.encode([job["description"]])[0]
-            
+
             # Ajouter à l'index FAISS
             self.index.add(embedding.reshape(1, -1))
-            
+
             # Ajouter les métadonnées
             self.jobs_metadata.append(job)
-            
+
             logger.info(f"✅ Job ajouté à FAISS : {job.get('title', 'unknown')}")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ Erreur ajout job à FAISS : {e}")
             return False
 
+
 # ─────────────────────────────────────────
 # Singleton pour VectorStore (HORS de la classe)
 # ─────────────────────────────────────────
-from typing import Optional
-import logging
-import json
 
 _vector_store_instance: Optional[JobVectorStore] = None
+
 
 def get_vector_store() -> JobVectorStore:
     """Retourne l'instance singleton du JobVectorStore"""
     global _vector_store_instance
     if _vector_store_instance is None:
         from src.job_matcher import JOB_DATA_PATH
-        
+
         logger = logging.getLogger(__name__)
         _vector_store_instance = JobVectorStore()
-        
+
         # Charger les jobs existants
         try:
             with open(JOB_DATA_PATH, 'r') as f:
@@ -295,5 +298,5 @@ def get_vector_store() -> JobVectorStore:
                     logger.info(f"✅ {len(jobs)} jobs chargés dans FAISS")
         except Exception as e:
             logger.warning(f"⚠️ Impossible de charger les jobs dans FAISS: {e}")
-    
+
     return _vector_store_instance

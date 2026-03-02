@@ -4,6 +4,8 @@ Lance ce fichier en parallèle de l'API :
     python -m src.scheduler
 """
 
+from src.database import get_db_manager
+from src.job_scraper import get_job_scraper
 import schedule
 import time
 import json
@@ -14,8 +16,6 @@ import sys
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.job_scraper import get_job_scraper
-from src.database import get_db_manager
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,11 +25,11 @@ logger = logging.getLogger(__name__)
 
 # ── Requêtes à scraper ────────────────────────────────────────────────────────
 SCRAPE_QUERIES = [
-    {"query": "Data Scientist",            "location": "France", "num_pages": 2},
+    {"query": "Data Scientist", "location": "France", "num_pages": 2},
     {"query": "Machine Learning Engineer", "location": "France", "num_pages": 2},
-    {"query": "Data Engineer",             "location": "France", "num_pages": 2},
-    {"query": "MLOps Engineer",            "location": "France", "num_pages": 1},
-    {"query": "AI Engineer",               "location": "France", "num_pages": 1},
+    {"query": "Data Engineer", "location": "France", "num_pages": 2},
+    {"query": "MLOps Engineer", "location": "France", "num_pages": 1},
+    {"query": "AI Engineer", "location": "France", "num_pages": 1},
 ]
 
 

@@ -39,7 +39,7 @@ class SkillsExtractor:
         # ====================================================================
         self.nlp = None
         self.model_name = None
-        
+
         # Liste des modèles à essayer (ordre de priorité)
         models_to_try = [
             ("en_core_web_sm", "Anglais (développement local)"),

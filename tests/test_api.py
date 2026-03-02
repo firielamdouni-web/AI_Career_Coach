@@ -411,6 +411,7 @@ class TestEvaluateAnswer:
 # TESTS SIMULATE INTERVIEW — SCRAPÉS + CAS LIMITES
 # ============================================================================
 
+
 class TestSimulateInterviewExtended:
 
     def test_simulate_interview_invalid_job_returns_404(self, client):
@@ -429,9 +430,9 @@ class TestSimulateInterviewExtended:
         with patch('src.api.get_db_manager') as mock_db_scraped:
             mock_cursor = MagicMock()
             mock_cursor.fetchone.return_value = {
-                'job_id':         'sc_abc123',
-                'title':          'Data Engineer JSearch',
-                'description':    'Poste Data Engineer en France.',
+                'job_id': 'sc_abc123',
+                'title': 'Data Engineer JSearch',
+                'description': 'Poste Data Engineer en France.',
                 'required_skills': '["Python","Spark"]',
             }
             mock_db_inst = MagicMock()
