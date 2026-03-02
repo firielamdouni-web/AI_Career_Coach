@@ -21,6 +21,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY src/ ./src/
 COPY data/ ./data/
 COPY models/ ./models/
+COPY tests/ ./tests/
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

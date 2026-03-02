@@ -1,21 +1,13 @@
 """
-🎯 AI Career Coach - Dashboard Streamlit (VERSION API)
-Application de recommandation d'offres d'emploi basée sur l'analyse de CV
-Utilise l'API FastAPI pour tous les traitements
+🎯 AI Career Coach - Dashboard Streamlit
+Interface unique : offres locales (JSON) + offres réelles (JSearch)
 """
 
 import streamlit as st
 import requests
-import json
-from pathlib import Path
-from datetime import datetime
 import os
 
-# ============================================================================
-# CONFIGURATION
-# ============================================================================
-
-API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")  # URL de l'API FastAPI
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
 st.set_page_config(
     page_title="AI Career Coach",
@@ -24,395 +16,220 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS personnalisé (identique à avant)
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        color: #1f77b4;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        text-align: center;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .upload-box {
-        border: 2px dashed #1f77b4;
-        border-radius: 10px;
-        padding: 2rem;
-        text-align: center;
-        margin: 2rem 0;
-        background-color: #f0f8ff;
-    }
-    .job-card {
-        padding: 1.5rem;
-        border-radius: 10px;
-        border: 2px solid #e0e0e0;
-        margin-bottom: 1rem;
-        background-color: #f9f9f9;
-    }
-    .job-card-excellent {
-        border-color: #4CAF50;
-        background-color: #f1f8f4;
-    }
-    .job-card-good {
-        border-color: #FFC107;
-        background-color: #fffbf0;
-    }
-    .job-card-medium {
-        border-color: #FF9800;
-        background-color: #fff8f0;
-    }
-    .score-badge {
-        display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 1.1rem;
-    }
-    .score-excellent {
-        background-color: #4CAF50;
-        color: white;
-    }
-    .score-good {
-        background-color: #FFC107;
-        color: white;
-    }
-    .score-medium {
-        background-color: #FF9800;
-        color: white;
-    }
-    .score-low {
-        background-color: #9E9E9E;
-        color: white;
-    }
-    .metric-card {
-        background-color: #ffffff;
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-    .api-status-connected {
-        color: #4CAF50;
-        font-weight: bold;
-    }
-    .api-status-disconnected {
-        color: #f44336;
-        font-weight: bold;
-    }
+.main-header { font-size:2.5rem; font-weight:bold; text-align:center; color:#1f77b4; margin-bottom:.5rem; }
+.sub-header  { font-size:1.1rem; text-align:center; color:#666; margin-bottom:2rem; }
+.source-local   { background:#e3f2fd; color:#1565c0; padding:2px 8px; border-radius:12px; font-size:.8rem; font-weight:bold; }
+.source-scraped { background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:12px; font-size:.8rem; font-weight:bold; }
+.score-badge { display:inline-block; padding:.3rem .8rem; border-radius:20px; font-weight:bold; font-size:1.1rem; }
+.score-excellent { background:#4CAF50; color:white; }
+.score-good      { background:#FFC107; color:#333; }
+.score-medium    { background:#FF9800; color:white; }
+.score-low       { background:#9E9E9E; color:white; }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# FONCTIONS D'APPEL API
+# FONCTIONS API
 # ============================================================================
 
+@st.cache_data(ttl=30)
 def check_api_health():
-    """
-    Vérifier que l'API est accessible
-    
-    Returns:
-        dict ou None: Réponse de l'API ou None si erreur
-    """
     try:
-        response = requests.get(f"{API_BASE_URL}/health", timeout=5)
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except requests.exceptions.RequestException:
+        r = requests.get(f"{API_BASE_URL}/health", timeout=5)
+        return r.json() if r.status_code == 200 else None
+    except Exception:
         return None
 
 
+@st.cache_data(ttl=60)
 def get_api_stats():
-    """
-    Obtenir les statistiques de l'API
-    
-    Returns:
-        dict ou None: Statistiques ou None si erreur
-    """
     try:
-        response = requests.get(f"{API_BASE_URL}/api/v1/stats", timeout=10)
-        if response.status_code == 200:
-            return response.json()
-        return None
-    except requests.exceptions.RequestException:
+        r = requests.get(f"{API_BASE_URL}/api/v1/stats", timeout=10)
+        return r.json() if r.status_code == 200 else None
+    except Exception:
         return None
 
 
 def extract_skills_via_api(cv_file):
-    """
-    Extraire les compétences via l'API
-    
-    Args:
-        cv_file: Fichier PDF uploadé (UploadedFile de Streamlit)
-        
-    Returns:
-        dict ou None: {technical_skills, soft_skills, total_skills, cv_text_length}
-    """
     try:
-        # Préparer le fichier pour l'upload
-        # Remettre le curseur au début
         cv_file.seek(0)
-        
-        files = {
-            "file": (cv_file.name, cv_file, "application/pdf")
-        }
-        
-        # Appeler l'API
-        response = requests.post(
+        r = requests.post(
             f"{API_BASE_URL}/api/v1/extract-skills",
-            files=files,
-            timeout=480  # 8 minutes max
+            files={"file": (cv_file.name, cv_file, "application/pdf")},
+            timeout=480
         )
-        
-        # Vérifier le statut
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"❌ Erreur API (Code {response.status_code})")
-            error_detail = response.json().get('detail', 'Erreur inconnue')
-            st.error(f"Détail : {error_detail}")
-            return None
-            
-    except requests.exceptions.ConnectionError:
-        st.error("❌ Impossible de se connecter à l'API")
-        st.info("💡 Vérifiez que l'API tourne : `uvicorn src.api:app --reload`")
+        if r.status_code == 200:
+            return r.json()
+        st.error(f"❌ Extraction échouée ({r.status_code}) : {r.json().get('detail','')}")
         return None
     except requests.exceptions.Timeout:
-        st.error("⏱️ Timeout : L'API met trop de temps à répondre")
+        st.error("⏱️ Timeout extraction")
         return None
     except Exception as e:
-        st.error(f"❌ Erreur inattendue : {str(e)}")
+        st.error(f"❌ {e}")
         return None
 
 
-def recommend_jobs_via_api(cv_file, top_n=10, min_score=40.0):
+def recommend_jobs_via_api(cv_file, top_n=50, min_score=0.0, live_scrape=True):
     """
-    Obtenir des recommandations via l'API
-    
-    Args:
-        cv_file: Fichier PDF uploadé
-        top_n: Nombre de recommandations
-        min_score: Score minimum
-        
-    Returns:
-        dict ou None: {recommendations, total_jobs_analyzed, cv_skills_count}
+    Appelle /api/v1/recommend-jobs avec live_scrape=True pour inclure
+    les offres JSearch en temps réel.
     """
     try:
-        # Préparer le fichier
         cv_file.seek(0)
-        
-        files = {
-            "file": (cv_file.name, cv_file, "application/pdf")
-        }
-        
-        params = {
-            "top_n": top_n,
-            "min_score": min_score
-        }
-        
-        # Appeler l'API
-        response = requests.post(
+        r = requests.post(
             f"{API_BASE_URL}/api/v1/recommend-jobs",
-            files=files,
-            params=params,
-            timeout=480  # 8 minutes max
+            files={"file": (cv_file.name, cv_file, "application/pdf")},
+            params={
+                "top_n":        top_n,
+                "min_score":    min_score,
+                "use_faiss":    "false",
+                "live_scrape":  str(live_scrape).lower()
+            },
+            timeout=600  # 10 min car JSearch peut être lent
         )
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"❌ Erreur API (Code {response.status_code})")
-            error_detail = response.json().get('detail', 'Erreur inconnue')
-            st.error(f"Détail : {error_detail}")
-            return None
-            
-    except requests.exceptions.ConnectionError:
-        st.error("❌ Impossible de se connecter à l'API")
+        if r.status_code == 200:
+            return r.json()
+        try:
+            detail = r.json().get('detail', r.text)
+        except Exception:
+            detail = r.text
+        st.error(f"❌ Recommandations échouées ({r.status_code}) : {detail}")
         return None
     except requests.exceptions.Timeout:
-        st.error("⏱️ Timeout : L'API met trop de temps à répondre")
+        st.error("⏱️ Timeout — le scraping JSearch a pris trop de temps")
         return None
     except Exception as e:
-        st.error(f"❌ Erreur inattendue : {str(e)}")
-        return None
-
-
-def get_jobs_list(category=None, remote=None, limit=25):
-    """
-    Obtenir la liste des offres via l'API
-    
-    Args:
-        category: Filtrer par catégorie (optionnel)
-        remote: Filtrer par télétravail (optionnel)
-        limit: Nombre maximum de résultats
-        
-    Returns:
-        list ou None: Liste d'offres ou None si erreur
-    """
-    try:
-        params = {"limit": limit}
-        if category:
-            params["category"] = category
-        if remote is not None:
-            params["remote"] = remote
-        
-        response = requests.get(
-            f"{API_BASE_URL}/api/v1/jobs",
-            params=params,
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            return response.json()
-        return None
-        
-    except requests.exceptions.RequestException:
+        st.error(f"❌ {e}")
         return None
 
 
 # ============================================================================
-# FONCTIONS D'AFFICHAGE
+# AFFICHAGE D'UNE CARTE D'OFFRE
 # ============================================================================
 
 def get_score_class(score):
-    """Retourner la classe CSS selon le score"""
-    if score >= 70:
-        return "excellent", "🟢"
-    elif score >= 50:
-        return "good", "🟡"
-    elif score >= 40:
-        return "medium", "🟠"
-    else:
-        return "low", "🔴"
+    if score >= 70:   return "excellent", "🟢"
+    if score >= 50:   return "good",      "🟡"
+    if score >= 40:   return "medium",    "🟠"
+    return "low", "🔴"
 
 
-def display_job_card(job, rank):
-    """Afficher une carte d'offre d'emploi (VERSION SIMPLIFIÉE)"""
+def display_job_card(job: dict, rank: int, cv_skills: list):
     score = job['score']
     score_class, emoji = get_score_class(score)
-    
-    card_class = f"job-card job-card-{score_class}" if score_class != "low" else "job-card"
-    
-    st.markdown(f'<div class="{card_class}">', unsafe_allow_html=True)
-    
-    # En-tête
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.markdown(f"### {emoji} #{rank} - {job['title']}")
-        st.markdown(f"**🏢 {job['company']}** | 📍 {job['location']}")
-    
-    with col2:
+    # ← CHANGEMENT : détecter aussi via is_scraped (pas seulement l'URL)
+    is_real = bool(job.get('is_scraped') or job.get('url', '').startswith('http'))
+
+    col_title, col_score = st.columns([4, 1])
+    with col_title:
+        source_html = (
+            '<span class="source-scraped">🌐 Offre réelle (JSearch)</span>'
+            if is_real else
+            '<span class="source-local">📁 Offre locale</span>'
+        )
         st.markdown(
-            f'<div class="score-badge score-{score_class}">{score:.1f}%</div>', 
+            f"### {emoji} #{rank} — {job['title']}  "
+            f"<br>{source_html}",
             unsafe_allow_html=True
         )
-    
-    # Détails simplifiés
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown(f"**💼 Expérience** : {job['experience_required']}")
-        st.markdown(f"**🏠 Remote** : {'Oui ✅' if job['remote'] else 'Non ❌'}")
-    
-    with col2:
-        st.markdown(f"**🎯 Score de matching** : {score:.1f}%")
+        st.markdown(f"**🏢 {job['company']}** &nbsp;|&nbsp; 📍 {job['location']}")
+        # ← NOUVEAU : afficher la source (hellowork, indeed, etc.)
+        if job.get('source') and job['source'] not in ('local',):
+            st.caption(f"🔗 Source : {job['source']}")
 
-        # Badge ML
+    with col_score:
+        st.markdown(
+            f'<div class="score-badge score-{score_class}" '
+            f'style="margin-top:1.5rem;">{score:.1f}%</div>',
+            unsafe_allow_html=True
+        )
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown(f"**💼 Expérience** : {job.get('experience_required','N/A')}")
+        st.markdown(f"**🏠 Remote** : {'✅ Oui' if job.get('remote') else '❌ Non'}")
+        if job.get('employment_type'):
+            st.markdown(f"**📋 Contrat** : {job['employment_type']}")
+    with c2:
+        st.markdown(f"**🎯 Score matching** : {score:.1f}%")
+        if job.get('salary_min') and job.get('salary_max'):
+            st.markdown(f"**💰 Salaire** : {job['salary_min']:,.0f} – {job['salary_max']:,.0f} €")
+        elif job.get('salary_min'):
+            st.markdown(f"**💰 Salaire** : à partir de {job['salary_min']:,.0f} €")
+    with c3:
         if job.get('ml_available'):
             ml_label = job.get('ml_label', 'N/A')
-            ml_score = job.get('ml_score')
-            
-            # Couleur selon le label ML
-            ml_colors = {
-                'Perfect Fit': ('🟢', '#4CAF50'),
-                'Partial Fit': ('🟡', '#FFC107'),
-                'No Fit':      ('🔴', '#f44336'),
-            }
-            ml_emoji, ml_color = ml_colors.get(ml_label, ('⚪', '#9E9E9E'))
-            
+            colors = {'Perfect Fit':('🟢','#4CAF50'), 'Partial Fit':('🟡','#FFC107'), 'No Fit':('🔴','#f44336')}
+            ml_e, ml_c = colors.get(ml_label, ('⚪','#9E9E9E'))
             st.markdown(
                 f"**🤖 Prédiction ML** : "
-                f"<span style='color:{ml_color}; font-weight:bold;'>"
-                f"{ml_emoji} {ml_label}</span>",
+                f"<span style='color:{ml_c};font-weight:bold;'>{ml_e} {ml_label}</span>",
                 unsafe_allow_html=True
             )
-            
-            # Probabilités ML dans un expander
-            ml_proba = job.get('ml_probabilities')
-            if ml_proba:
+            proba = job.get('ml_probabilities')
+            if proba:
                 with st.expander("📊 Probabilités ML"):
-                    col_a, col_b, col_c = st.columns(3)
-                    with col_a:
-                        st.metric("🔴 No Fit", f"{ml_proba['no_fit']*100:.1f}%")
-                    with col_b:
-                        st.metric("🟡 Partial Fit", f"{ml_proba['partial_fit']*100:.1f}%")
-                    with col_c:
-                        st.metric("🟢 Perfect Fit", f"{ml_proba['perfect_fit']*100:.1f}%")
+                    pa, pb, pc = st.columns(3)
+                    pa.metric("🔴 No Fit",      f"{proba.get('no_fit',0)*100:.1f}%")
+                    pb.metric("🟡 Partial Fit", f"{proba.get('partial_fit',0)*100:.1f}%")
+                    pc.metric("🟢 Perfect Fit", f"{proba.get('perfect_fit',0)*100:.1f}%")
         else:
             st.markdown("**🤖 Prédiction ML** : ⚪ N/A")
-    
-    # Compétences matchées
-    with st.expander("🔧 Compétences matchées"):
-        matching_skills = job.get('matching_skills', [])
-        
-        if matching_skills:
-            st.markdown(f"**{len(matching_skills)} compétences correspondent à cette offre :**")
-            st.markdown("---")
-            
-            # Afficher en colonnes pour meilleure lisibilité
-            num_cols = 3
-            cols = st.columns(num_cols)
-            
-            for idx, skill in enumerate(matching_skills):
-                col_idx = idx % num_cols
-                with cols[col_idx]:
-                    st.markdown(f"✓ {skill}")
-        else:
-            st.info("Aucune compétence matchée disponible")
 
-    # Compétences manquantes
-    missing_skills = job.get('missing_skills', [])
-    if missing_skills:
-        with st.expander(f"⚠️ Compétences manquantes ({len(missing_skills)})"):
-            st.markdown(f"**{len(missing_skills)} compétences requises que vous ne possédez pas (ou non détectées) :**")
-            st.markdown("---")
-            
-            # Afficher en colonnes (même format)
-            num_cols = 3
-            cols = st.columns(num_cols)
-            
-            for idx, skill in enumerate(missing_skills):
-                col_idx = idx % num_cols
-                with cols[col_idx]:
-                    st.markdown(f"❌ {skill}")
-            
-            # Message d'encouragement
-            st.markdown("---")
-            st.info("💡 **Conseil** : Ajoutez ces compétences à votre CV ou suivez une formation pour améliorer votre score !")
+    # ← NOUVEAU : description pour les offres réelles
+    if is_real and job.get('description'):
+        with st.expander("📄 Description du poste"):
+            desc = job['description']
+            st.markdown(desc[:1000] + ("..." if len(desc) > 1000 else ""))
 
-    # NOUVEAU : Bouton simulation d'entretien
+    matching = job.get('matching_skills', [])
+    missing  = job.get('missing_skills',  [])
+
+    col_m, col_miss = st.columns(2)
+    with col_m:
+        with st.expander(f"✅ Compétences matchées ({len(matching)})"):
+            if matching:
+                cols = st.columns(3)
+                for i, s in enumerate(matching):
+                    cols[i % 3].markdown(f"✓ {s}")
+            else:
+                st.info("Aucune compétence matchée")
+    with col_miss:
+        with st.expander(f"⚠️ Compétences manquantes ({len(missing)})"):
+            if missing:
+                cols = st.columns(3)
+                for i, s in enumerate(missing):
+                    cols[i % 3].markdown(f"❌ {s}")
+                st.info("💡 Formez-vous sur ces compétences pour améliorer votre score !")
+            else:
+                st.success("Vous avez toutes les compétences requises 🎉")
+
     st.markdown("---")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if st.button(f"🎤 Simuler un entretien", key=f"interview_{job['job_id']}", use_container_width=True):
-            # Sauvegarder le job_id dans session_state
+    btn1, btn2 = st.columns(2)
+
+    with btn1:
+        if st.button("🎤 Simuler un entretien", key=f"iv_{job['job_id']}", use_container_width=True):
             st.session_state.selected_job_for_interview = job['job_id']
-            # Rediriger vers la page interview
+            st.session_state.cv_skills_for_interview    = cv_skills
             st.switch_page("pages/1_Interview_Simulator.py")
-    
-    with col2:
-        if st.button(f"📄 Voir l'offre complète", key=f"details_{job['job_id']}", use_container_width=True):
-            st.info("Fonctionnalité en développement")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+
+    with btn2:
+        # ← CHANGEMENT : condition améliorée (is_real inclut is_scraped sans URL)
+        if job.get('url') and job['url'].startswith('http'):
+            st.markdown(
+                f'<a href="{job["url"]}" target="_blank">'
+                f'<button style="width:100%;padding:.5rem;background:#4CAF50;'
+                f'color:white;border:none;border-radius:4px;cursor:pointer;font-size:1rem;">'
+                f'🌐 Voir l\'offre en ligne</button></a>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown("&nbsp;")
+
+    st.markdown("---")
 
 
 # ============================================================================
@@ -420,280 +237,228 @@ def display_job_card(job, rank):
 # ============================================================================
 
 def main():
-    """Application principale"""
-    
-    # Header
     st.markdown('<div class="main-header">🎯 AI Career Coach</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="sub-header">Trouvez les offres d\'emploi parfaites pour votre profil</div>', 
+        '<div class="sub-header">Matching intelligent CV ↔ Offres réelles (LinkedIn · Indeed · Glassdoor)</div>',
         unsafe_allow_html=True
     )
-    
-    # Vérifier la connexion à l'API
+
+    # ── Sidebar : état API ────────────────────────────────────────────────
     st.sidebar.header("🔌 État de l'API")
-    
-    with st.spinner("🔍 Vérification de l'API..."):
-        health = check_api_health()
-    
-    if health:
-        st.sidebar.markdown(
-            f'<p class="api-status-connected">✅ API connectée</p>',
-            unsafe_allow_html=True
-        )
-        st.sidebar.markdown(f"**Version** : {health.get('version', 'N/A')}")
-        st.sidebar.markdown(f"**Offres disponibles** : {health.get('jobs_available', 0)}")
-        
-        # Obtenir les stats
-        stats = get_api_stats()
-        if stats:
-            with st.sidebar.expander("📊 Statistiques système"):
-                st.markdown(f"**Total offres** : {stats['total_jobs']}")
-                st.markdown(f"**Remote** : {stats['remote_jobs']}")
-                st.markdown(f"**On-site** : {stats['on_site_jobs']}")
-                st.markdown(f"**Compétences techniques** : {stats['total_technical_skills']}")
-                st.markdown(f"**Soft skills** : {stats['total_soft_skills']}")
-                st.markdown(f"**Modèle** : {stats['model_used']}")
-    else:
-        st.sidebar.markdown(
-            '<p class="api-status-disconnected">❌ API non accessible</p>',
-            unsafe_allow_html=True
-        )
-        st.error("❌ Impossible de se connecter à l'API")
-        st.info("💡 Lancez l'API avec : `uvicorn src.api:app --reload --port 8000`")
-        st.code("uvicorn src.api:app --reload --port 8000", language="bash")
+    health = check_api_health()
+
+    if not health:
+        st.sidebar.error("❌ API non accessible")
+        st.error("❌ API non accessible. Lancez : `uvicorn src.api:app --reload --port 8000`")
         st.stop()
-    
-    # Initialiser session state
-    if 'cv_processed' not in st.session_state:
-        st.session_state.cv_processed = False
-        st.session_state.cv_skills = []
-        st.session_state.recommendations = []
-        st.session_state.cv_skills_count = 0
-    
-    # Zone d'upload
+
+    st.sidebar.success("✅ API connectée")
+    st.sidebar.markdown(f"**Version** : {health.get('version','N/A')}")
+
+    stats = get_api_stats()
+    if stats:
+        with st.sidebar.expander("📊 Statistiques"):
+            st.markdown(f"- Offres locales : **{stats['total_jobs']}**")
+            st.markdown(f"- Remote : **{stats['remote_jobs']}**")
+            st.markdown(f"- Compétences tech : **{stats['total_technical_skills']}**")
+            st.markdown(f"- Soft skills : **{stats['total_soft_skills']}**")
+
+    # ── Session state ─────────────────────────────────────────────────────
+    defaults = {
+        'cv_processed':       False,
+        'cv_skills':          [],
+        'recommendations':    [],
+        'cv_skills_count':    0,
+        'total_analyzed':     0,
+        'local_count':        0,
+        'scraped_count':      0,
+    }
+    for k, v in defaults.items():
+        st.session_state.setdefault(k, v)
+
+    # ── Upload CV ─────────────────────────────────────────────────────────
     st.markdown("---")
-    st.header("📤 Upload de CV")
-    
+    st.header("📤 Uploadez votre CV")
     uploaded_file = st.file_uploader(
-        "Choisissez votre CV (PDF)",
-        type=['pdf'],
-        help="Uploadez votre CV au format PDF pour obtenir des recommandations personnalisées"
+        "Choisissez votre CV (PDF)", type=['pdf'],
+        help="Votre CV sera analysé pour extraire vos compétences"
     )
-    
-    # Bouton d'analyse
-    if uploaded_file is not None:
-        st.markdown(f"**Fichier uploadé** : {uploaded_file.name} ({uploaded_file.size / 1024:.1f} KB)")
-        
-        col1, col2, col3 = st.columns([1, 1, 2])
-        
-        with col1:
+
+    if uploaded_file:
+        st.markdown(f"📎 **{uploaded_file.name}** ({uploaded_file.size/1024:.1f} KB)")
+
+        col_analyze, col_reset = st.columns([1, 1])
+
+        with col_analyze:
             if st.button("🚀 Analyser mon CV", type="primary", use_container_width=True):
-                
-                # Étape 1 : Extraire les compétences
-                with st.spinner("🔍 Extraction des compétences via API... (30-60 secondes)"):
+                # Étape 1 : extraction des compétences
+                with st.spinner("🔍 Extraction des compétences..."):
                     skills_result = extract_skills_via_api(uploaded_file)
-                
+
                 if not skills_result:
-                    st.error("❌ Échec de l'extraction des compétences")
                     st.stop()
-                
+
                 st.success(f"✅ {skills_result['total_skills']} compétences détectées")
-                
-                # Étape 2 : Obtenir les recommandations
-                with st.spinner("🎯 Calcul des recommandations via API... (30-60 secondes)"):
-                    recommendations_result = recommend_jobs_via_api(uploaded_file, top_n=25, min_score=0)
-                
-                if not recommendations_result:
-                    st.error("❌ Échec de la génération des recommandations")
+
+                # Étape 2 : recommandations (avec scraping temps réel)
+                with st.spinner(
+                    "🌐 Scraping JSearch en temps réel + calcul des scores... "
+                    "(peut prendre 1-2 minutes)"
+                ):
+                    reco_result = recommend_jobs_via_api(
+                        uploaded_file,
+                        top_n=200,         # ← CHANGEMENT : était 25, inclut toutes les offres DB
+                        min_score=0.0,
+                        live_scrape=False  # ← le scheduler alimente la DB 2x/jour
+                    )
+
+                if not reco_result:
                     st.stop()
-                
-                st.success(f"✅ {len(recommendations_result['recommendations'])} offres analysées")
-                
-                # Sauvegarder dans session state
-                st.session_state.cv_processed = True
-                st.session_state.cv_skills = skills_result['technical_skills']
-                st.session_state.recommendations = recommendations_result['recommendations']
+
+                total = reco_result.get('total_jobs_analyzed', 0)
+                local = reco_result.get('local_jobs_count', 0)
+                scraped = reco_result.get('scraped_jobs_count', 0)
+                st.success(
+                    f"✅ {total} offres analysées "
+                    f"({local} locales + {scraped} réelles JSearch)"
+                )
+
+                st.session_state.cv_processed    = True
+                st.session_state.cv_skills       = skills_result['technical_skills']
+                st.session_state.recommendations = reco_result['recommendations']
                 st.session_state.cv_skills_count = skills_result['total_skills']
-                
+                st.session_state.total_analyzed  = total
+                st.session_state.local_count     = local
+                st.session_state.scraped_count   = scraped
                 st.rerun()
-        
-        with col2:
+
+        with col_reset:
             if st.button("🔄 Réinitialiser", use_container_width=True):
-                st.session_state.cv_processed = False
-                st.session_state.cv_skills = []
-                st.session_state.recommendations = []
-                st.session_state.cv_skills_count = 0
+                for k in defaults:
+                    st.session_state[k] = defaults[k]
                 st.rerun()
-    
-    # Si pas de CV traité, afficher les instructions
+
+    # ── Instructions si aucun CV traité ──────────────────────────────────
     if not st.session_state.cv_processed:
-        st.markdown('<div class="upload-box">', unsafe_allow_html=True)
-        st.markdown("### 📄 Comment ça marche ?")
-        st.markdown("""
-        1. **Uploadez votre CV** au format PDF
-        2. **Cliquez sur "Analyser mon CV"**
-        3. **Obtenez des recommandations personnalisées** basées sur vos compétences
-        
-        Notre système utilise l'IA pour :
-        - ✅ Extraire automatiquement vos compétences (via API)
-        - ✅ Comparer votre profil avec 25+ offres d'emploi
-        - ✅ Calculer un score de matching sémantique
-        - ✅ Recommander les meilleures opportunités
-        
-        ⏱️ **Temps de traitement estimé** : 30-60 secondes (appels API)
-        
-        🔌 **Architecture** : Streamlit → API FastAPI → Modèles IA
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-        
+        st.markdown("---")
+        with st.container():
+            st.markdown("""
+            ### 📄 Comment ça marche ?
+
+            1. **Uploadez votre CV** au format PDF
+            2. **Cliquez sur "Analyser mon CV"**
+            3. Le système :
+               - 🔍 Extrait automatiquement vos compétences
+               - 🌐 Scrape les offres en **temps réel** sur LinkedIn, Indeed, Glassdoor
+               - 🤖 Calcule un score de matching sémantique pour chaque offre
+               - 📊 Prédit avec XGBoost si vous êtes **No Fit / Partial Fit / Perfect Fit**
+               - 🎤 Simule un entretien personnalisé pour chaque poste
+
+            ⏱️ **Temps estimé** : 1–2 minutes (scraping inclus)
+            """)
         st.stop()
-    
-    # Si CV traité, afficher les résultats
-    cv_skills = st.session_state.cv_skills
+
+    # ── Résultats ─────────────────────────────────────────────────────────
     recommendations = st.session_state.recommendations
-    cv_skills_count = st.session_state.cv_skills_count
-    
-    # Sidebar - Filtres
+    cv_skills       = st.session_state.cv_skills
+
+    # ── Sidebar : filtres ─────────────────────────────────────────────────
     st.sidebar.markdown("---")
     st.sidebar.header("🔍 Filtres")
-    
-    # Filtre par score minimum
-    min_score = st.sidebar.slider(
-        "Score minimum (%)",
-        min_value=0,
-        max_value=100,
-        value=40,
-        step=5,
-        help="Afficher uniquement les offres avec un score ≥ ce seuil"
+
+    min_score = st.sidebar.slider("Score minimum (%)", 0, 100, 0, 5)
+
+    source_filter = st.sidebar.radio(
+        "Source des offres",
+        ["Toutes", "📁 Locales uniquement", "🌐 JSearch uniquement"],
+        index=0
     )
-    
-    # Filtre Remote
+
     remote_filter = st.sidebar.radio(
-        "Type de travail",
-        options=["Tous", "Remote uniquement", "On-site uniquement"],
-        index=0,
-        help="Filtrer par mode de travail"
+        "Mode de travail",
+        ["Tous", "Remote uniquement", "On-site uniquement"],
+        index=0
     )
 
-    # Filtre par niveau d'expérience
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("💼 Niveau d'expérience")
-    
-    # Extraire les niveaux uniques
-    all_experience_levels = sorted(list(set(job['experience_required'] for job in recommendations)))
-    
-    # Multiselect
-    selected_experiences = st.sidebar.multiselect(
-        "Sélectionnez un ou plusieurs niveaux",
-        options=all_experience_levels,
-        default=all_experience_levels,  # Tous sélectionnés par défaut
-        help="Maintenez Ctrl (Windows) ou Cmd (Mac) pour sélectionner plusieurs niveaux"
-    )
-    
-    # Si rien n'est sélectionné, afficher tous
-    if not selected_experiences:
-        selected_experiences = all_experience_levels
-    
-    # Appliquer les filtres
-    filtered_recs = recommendations.copy()
-    
-    # Filtre score
-    filtered_recs = [job for job in filtered_recs if job['score'] >= min_score]
-    
-    # Filtre remote
+    all_exp = sorted(set(j.get('experience_required', 'N/A') for j in recommendations))
+    sel_exp = st.sidebar.multiselect("Expérience", all_exp, default=all_exp)
+    if not sel_exp:
+        sel_exp = all_exp
+
+    # ── Appliquer filtres ─────────────────────────────────────────────────
+    filtered = recommendations.copy()
+    filtered = [j for j in filtered if j['score'] >= min_score]
+
+    if source_filter == "📁 Locales uniquement":
+        filtered = [j for j in filtered if not j.get('is_scraped')]
+    elif source_filter == "🌐 JSearch uniquement":
+        filtered = [j for j in filtered if j.get('is_scraped')]
+
     if remote_filter == "Remote uniquement":
-        filtered_recs = [job for job in filtered_recs if job['remote']]
+        filtered = [j for j in filtered if j.get('remote')]
     elif remote_filter == "On-site uniquement":
-        filtered_recs = [job for job in filtered_recs if not job['remote']]
+        filtered = [j for j in filtered if not j.get('remote')]
 
-    # Filtre expérience
-    filtered_recs = [job for job in filtered_recs if job['experience_required'] in selected_experiences]
-    
-    # Statistiques globales
+    filtered = [j for j in filtered if j.get('experience_required', 'N/A') in sel_exp]
+
+    # ── Métriques ─────────────────────────────────────────────────────────
     st.markdown("---")
     st.header("📊 Vue d'ensemble")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Compétences CV", cv_skills_count)
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Offres analysées", len(recommendations))
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col3:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Offres filtrées", len(filtered_recs))
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col4:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        if filtered_recs:
-            st.metric("Meilleur score", f"{filtered_recs[0]['score']:.1f}%")
-        else:
-            st.metric("Meilleur score", "N/A")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Distribution des scores
-    st.markdown("---")
-    col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("🎯 Distribution des matches")
-        excellent = len([j for j in filtered_recs if j['score'] >= 70])
-        good = len([j for j in filtered_recs if 50 <= j['score'] < 70])
-        medium = len([j for j in filtered_recs if 40 <= j['score'] < 50])
-        low = len([j for j in filtered_recs if j['score'] < 40])
-        
-        st.markdown(f"🟢 **Excellent match (≥70%)** : {excellent} offres")
-        st.markdown(f"🟡 **Bon match (50-70%)** : {good} offres")
-        st.markdown(f"🟠 **Match moyen (40-50%)** : {medium} offres")
-        st.markdown(f"🔴 **Match faible (<40%)** : {low} offres")
-        
-        st.info("💡 Le score est basé **uniquement** sur le matching sémantique des compétences")
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("🧠 Compétences CV",     st.session_state.cv_skills_count)
+    m2.metric("📋 Offres analysées",   st.session_state.total_analyzed)
+    m3.metric("📁 Locales",            st.session_state.local_count)
+    m4.metric("🌐 JSearch (réelles)",  st.session_state.scraped_count)
+    m5.metric("🔍 Offres filtrées",    len(filtered))
 
-    with col2:
-        st.subheader("🔧 Vos compétences")
-        for i, skill in enumerate(cv_skills[:10], 1):
-            st.markdown(f"{i}. {skill}")
-        
-        if len(cv_skills) > 10:
-            with st.expander(f"Voir les {len(cv_skills) - 10} autres compétences"):
-                for i, skill in enumerate(cv_skills[10:], 11):
-                    st.markdown(f"{i}. {skill}")
-    
-    # Liste des offres
     st.markdown("---")
-    st.header(f"🏆 Top {min(10, len(filtered_recs))} Offres Recommandées")
-    
-    if not filtered_recs:
-        st.warning("Aucune offre ne correspond aux critères sélectionnés")
-        st.info("💡 Essayez de réduire le score minimum ou d'élargir les filtres")
-    else:
-        # Nombre d'offres à afficher
-        num_to_show = st.selectbox(
-            "Nombre d'offres à afficher",
-            options=[5, 10, 15, 20, len(filtered_recs)],
-            index=1 if len(filtered_recs) >= 10 else 0
-        )
-        
-        # Afficher les offres
-        for i, job in enumerate(filtered_recs[:num_to_show], 1):
-            display_job_card(job, i)
-    
-    # Footer
+    col_dist, col_skills = st.columns(2)
+
+    with col_dist:
+        st.subheader("🎯 Distribution des scores")
+        exc  = sum(1 for j in filtered if j['score'] >= 70)
+        good = sum(1 for j in filtered if 50 <= j['score'] < 70)
+        med  = sum(1 for j in filtered if 40 <= j['score'] < 50)
+        low  = sum(1 for j in filtered if j['score'] < 40)
+        real = sum(1 for j in filtered if j.get('is_scraped'))
+        loc  = len(filtered) - real
+
+        st.markdown(f"🟢 **Excellent (≥70%)** : {exc} offres")
+        st.markdown(f"🟡 **Bon (50–70%)** : {good} offres")
+        st.markdown(f"🟠 **Moyen (40–50%)** : {med} offres")
+        st.markdown(f"🔴 **Faible (<40%)** : {low} offres")
+        st.markdown("---")
+        st.markdown(f"🌐 **Offres réelles JSearch** : {real}")
+        st.markdown(f"📁 **Offres locales** : {loc}")
+
+    with col_skills:
+        st.subheader("🔧 Vos compétences détectées")
+        for i, s in enumerate(cv_skills[:12], 1):
+            st.markdown(f"{i}. {s}")
+        if len(cv_skills) > 12:
+            with st.expander(f"Voir {len(cv_skills)-12} autres compétences"):
+                for i, s in enumerate(cv_skills[12:], 13):
+                    st.markdown(f"{i}. {s}")
+
+    # ── Liste des offres ──────────────────────────────────────────────────
     st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: #666;'>"
-        "🎯 AI Career Coach | Powered by FastAPI + Sentence-Transformers + Streamlit<br>"
-        f"🔌 Connected to API: {API_BASE_URL}"
-        "</div>",
-        unsafe_allow_html=True
+    st.header(f"🏆 Offres Recommandées ({len(filtered)} résultats)")
+
+    if not filtered:
+        st.warning("Aucune offre ne correspond aux filtres sélectionnés.")
+        st.info("💡 Réduisez le score minimum ou changez les filtres.")
+        st.stop()
+
+    num_show = st.selectbox(
+        "Nombre d'offres à afficher",
+        options=[10, 20, 30, 50, len(filtered)],
+        index=0
     )
+
+    for i, job in enumerate(filtered[:num_show], 1):
+        with st.container():
+            display_job_card(job, i, cv_skills)
 
 
 if __name__ == "__main__":

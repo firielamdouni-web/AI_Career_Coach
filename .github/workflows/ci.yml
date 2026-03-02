@@ -83,7 +83,11 @@ jobs:
             --cov=src \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
+            --ignore=tests/test_database.py \
+            --ignore=tests/test_vector_store.py \
             --tb=short
+        # ↑ ignorer les tests qui nécessitent PostgreSQL/FAISS en CI
+
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -126,6 +130,16 @@ jobs:
           file: ./docker/streamlit.Dockerfile
           push: false
           tags: ai-career-coach-streamlit:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Scheduler image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/api.Dockerfile   # même image que l'API
+          push: false
+          tags: ai-career-coach-scheduler:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

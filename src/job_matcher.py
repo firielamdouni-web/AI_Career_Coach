@@ -10,6 +10,7 @@ import logging
 import json
 import re
 from pathlib import Path
+import os
 
 # ✅ Initialisation du logger
 logging.basicConfig(
@@ -18,6 +19,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+JOB_DATA_PATH = Path(__file__).parent.parent / "data" / "jobs" / "jobs_dataset.json"
 
 class JobMatcher:
     """

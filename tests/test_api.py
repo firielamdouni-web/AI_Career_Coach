@@ -117,6 +117,7 @@ def client():
         mock_db_inst = MagicMock()
         mock_db_inst.save_cv_analysis.return_value = 1
         mock_db_inst.save_job_recommendation.return_value = 1
+        mock_db_inst.cursor.fetchone.return_value = None
         mock_db.return_value = mock_db_inst
 
         # Interview Simulator
@@ -405,3 +406,103 @@ class TestEvaluateAnswer:
         data = response.json()
         assert "score" in data
         assert 0 <= data["score"] <= 100
+
+# ============================================================================
+# TESTS SIMULATE INTERVIEW — SCRAPÉS + CAS LIMITES
+# ============================================================================
+
+class TestSimulateInterviewExtended:
+
+    def test_simulate_interview_invalid_job_returns_404(self, client):
+        """job_999 n'existe ni en local ni en DB (fetchone=None) → 404"""
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python"], "job_id": "job_999", "num_questions": 4}
+        )
+        assert response.status_code == 404
+
+    def test_simulate_interview_scraped_job_via_db(self, client):
+        """
+        job_id avec préfixe sc_ introuvable en local →
+        DB retourne une ligne → 200 avec le titre de la ligne DB
+        """
+        with patch('src.api.get_db_manager') as mock_db_scraped:
+            mock_cursor = MagicMock()
+            mock_cursor.fetchone.return_value = {
+                'job_id':         'sc_abc123',
+                'title':          'Data Engineer JSearch',
+                'description':    'Poste Data Engineer en France.',
+                'required_skills': '["Python","Spark"]',
+            }
+            mock_db_inst = MagicMock()
+            mock_db_inst.cursor = mock_cursor
+            mock_db_scraped.return_value = mock_db_inst
+
+            response = client.post(
+                "/api/v1/simulate-interview",
+                json={"cv_skills": ["Python"], "job_id": "sc_abc123", "num_questions": 4}
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["job_title"] == "Data Engineer JSearch"
+
+    def test_simulate_interview_scraped_job_db_failure_returns_404(self, client):
+        """DB lève une exception → job reste None → 404"""
+        with patch('src.api.get_db_manager') as mock_db_fail:
+            mock_db_fail.side_effect = Exception("DB connection error")
+            response = client.post(
+                "/api/v1/simulate-interview",
+                json={"cv_skills": ["Python"], "job_id": "sc_unknown", "num_questions": 4}
+            )
+        assert response.status_code == 404
+
+    def test_simulate_interview_response_structure(self, client):
+        """Vérifie la structure complète de la réponse pour un job valide"""
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python", "SQL"], "job_id": "job_001", "num_questions": 8}
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "job_title" in data
+        assert "rh_questions" in data
+        assert "technical_questions" in data
+        assert "total_questions" in data
+        assert isinstance(data["rh_questions"], list)
+        assert isinstance(data["technical_questions"], list)
+        assert data["total_questions"] == len(data["rh_questions"]) + len(data["technical_questions"])
+
+    def test_simulate_interview_total_questions_coherent(self, client):
+        """total_questions == len(rh) + len(technical)"""
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python"], "job_id": "job_002", "num_questions": 4}
+        )
+        data = response.json()
+        assert data["total_questions"] == len(data["rh_questions"]) + len(data["technical_questions"])
+
+    def test_simulate_interview_empty_skills_still_works(self, client):
+        """cv_skills vide → l'endpoint ne doit pas planter (géré par le simulator)"""
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": [], "job_id": "job_001", "num_questions": 4}
+        )
+        assert response.status_code == 200
+
+    def test_simulate_interview_sc_prefix_stripped_for_db_lookup(self, client):
+        """
+        Quand job_id='sc_XYZ', le raw_id='XYZ' doit aussi être cherché en DB.
+        Si DB retourne None pour les deux → 404.
+        """
+        with patch('src.api.get_db_manager') as mock_db_none:
+            mock_cursor = MagicMock()
+            mock_cursor.fetchone.return_value = None
+            mock_db_inst = MagicMock()
+            mock_db_inst.cursor = mock_cursor
+            mock_db_none.return_value = mock_db_inst
+
+            response = client.post(
+                "/api/v1/simulate-interview",
+                json={"cv_skills": ["Python"], "job_id": "sc_inexistant", "num_questions": 4}
+            )
+        assert response.status_code == 404

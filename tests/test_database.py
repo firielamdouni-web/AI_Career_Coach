@@ -6,6 +6,8 @@ from unittest.mock import patch, MagicMock
 from src.database import DatabaseManager, get_db_manager, close_db_connection
 import psycopg2
 
+# Marquer tout le fichier comme test d'intégration (ignoré en CI)
+pytestmark = pytest.mark.integration
 
 MOCK_DATABASE_URL = "postgresql://user:password@localhost:5432/testdb"
 

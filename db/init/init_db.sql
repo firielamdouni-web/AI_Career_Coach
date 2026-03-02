@@ -59,6 +59,31 @@ CREATE INDEX idx_recommendations_job_id ON job_recommendations(job_id);
 CREATE INDEX idx_interviews_cv_id ON interview_simulations(cv_analysis_id);
 CREATE INDEX idx_interviews_job_id ON interview_simulations(job_id);
 
+-- table scraped_jobs
+
+CREATE TABLE IF NOT EXISTS scraped_jobs (
+    id                  SERIAL PRIMARY KEY,
+    job_id              VARCHAR(255) UNIQUE NOT NULL,
+    title               VARCHAR(500) NOT NULL,
+    company             VARCHAR(255),
+    location            VARCHAR(255),
+    description         TEXT,
+    url                 VARCHAR(1000),
+    source              VARCHAR(50),        -- 'linkedin', 'indeed', etc.
+    employment_type     VARCHAR(100),
+    is_remote           BOOLEAN DEFAULT FALSE,
+    salary_min          NUMERIC(10,2),
+    salary_max          NUMERIC(10,2),
+    required_skills     JSONB DEFAULT '[]',
+    scraped_at          TIMESTAMP DEFAULT NOW(),
+    created_at          TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_title    ON scraped_jobs(title);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_source   ON scraped_jobs(source);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_remote   ON scraped_jobs(is_remote);
+CREATE INDEX IF NOT EXISTS idx_scraped_jobs_scraped  ON scraped_jobs(scraped_at);
+
 -- Insérer un user anonyme par défaut
 INSERT INTO users (username, email) 
 VALUES ('anonymous', 'anonymous@app.local')

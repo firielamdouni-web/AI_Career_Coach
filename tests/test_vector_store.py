@@ -8,6 +8,9 @@ import tempfile
 import os
 
 
+# Marquer tout le fichier comme test d'intégration (ignoré en CI)
+pytestmark = pytest.mark.integration
+
 MOCK_JOBS = [
     {
         "job_id": "job_001",

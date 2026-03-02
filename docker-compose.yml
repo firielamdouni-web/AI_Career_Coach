@@ -105,6 +105,20 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile   # même image que l'API
+    container_name: career_coach_scheduler
+    command: python -m src.scheduler
+    env_file: .env
+    depends_on:
+      - postgres
+      - api
+    restart: unless-stopped
+    networks:
+      - pfe-network
+
 networks:
   pfe-network:
     driver: bridge
