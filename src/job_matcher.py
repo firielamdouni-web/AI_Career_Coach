@@ -10,6 +10,7 @@ import logging
 import json
 import re
 from pathlib import Path
+
 # import os
 
 # ✅ Initialisation du logger
@@ -31,7 +32,9 @@ class JobMatcher:
         """Initialize JobMatcher with sentence transformer model"""
         logger.info("Initialisation du JobMatcher...")
         self.model = SentenceTransformer('all-mpnet-base-v2')
-
+        self._cv_embeddings_cache = {}   # ← AJOUT : cache CV embeddings
+        self._job_embeddings_cache = {}  # ← AJOUT : cache job embeddings
+        
         # Charger skills_reference.json
         skills_db_path = Path(__file__).parent.parent / \
             "data" / "skills_reference.json"
@@ -51,6 +54,16 @@ class JobMatcher:
 
         # Construire le mapping de variations
         self.variations_map = self._build_variations_map()
+        
+        # 🔥 ASTUCE INTELLIGENTE : Créer le Super Regex en cache global
+        self._all_known_skills = set()
+        for canonical, variations in self.variations_map.items():
+            self._all_known_skills.add(canonical)
+            self._all_known_skills.update(variations)
+            
+        sorted_skills = sorted(list(self._all_known_skills), key=len, reverse=True)
+        escaped_skills = [re.escape(s) for s in sorted_skills if s.strip()]
+        self._skills_regex = re.compile(r'\b(' + '|'.join(escaped_skills) + r')\b')
 
         logger.info("✅ JobMatcher initialisé avec all-mpnet-base-v2")
 
@@ -116,11 +129,6 @@ class JobMatcher:
         Returns:
             Liste de compétences extraites et normalisées
         """
-        # Créer une liste de tous les skills reconnus
-        all_known_skills = set()
-        for canonical, variations in self.variations_map.items():
-            all_known_skills.add(canonical)
-            all_known_skills.update(variations)
 
         skills = []
 
@@ -133,12 +141,9 @@ class JobMatcher:
                     keywords = [k.strip() for k in match.group(1).split(',')]
                     skills.extend(keywords)
 
-                # Extraire skills connus du texte
-                req_lower = req.lower()
-                for known_skill in all_known_skills:
-                    pattern = r'\b' + re.escape(known_skill) + r'\b'
-                    if re.search(pattern, req_lower):
-                        skills.append(known_skill)
+                # ✅ La boucle for lente par le Super Regex
+                if req:
+                    skills.extend(self._skills_regex.findall(req.lower()))
 
         # 2. Nice-to-have (priorité moyenne)
         if 'nice_to_have' in job and job['nice_to_have']:
@@ -148,12 +153,10 @@ class JobMatcher:
                     keywords = [k.strip() for k in match.group(1).split(',')]
                     skills.extend(keywords)
 
-                nice_lower = nice.lower()
-                for known_skill in all_known_skills:
-                    pattern = r'\b' + re.escape(known_skill) + r'\b'
-                    if re.search(pattern, nice_lower):
-                        skills.append(known_skill)
-
+                # ✅ 
+                if nice:
+                    skills.extend(self._skills_regex.findall(nice.lower()))
+                    
         # 3. Normaliser avec le mapping
         normalized = []
         seen = set()
@@ -218,35 +221,52 @@ class JobMatcher:
             f"🔍 Matching {len(job_skills)} skills offre ↔ {len(cv_skills)} skills CV")
 
         try:
-            # ✅ OPTIMISATION : Encoder tous les skills UNE SEULE FOIS (cache)
-            cv_embeddings = {
-                skill: self.model.encode([skill.lower()], show_progress_bar=False)[0]
-                for skill in cv_skills
-            }
+            # ✅ OPTIMISATION : Encoder en BATCH avec cache par instance
+            # CV embeddings : encoder uniquement les nouveaux skills
+            new_cv_skills = [s for s in cv_skills if s.lower() not in self._cv_embeddings_cache]
+            if new_cv_skills:
+                new_cv_embs = self.model.encode(
+                    [s.lower() for s in new_cv_skills],
+                    batch_size=64,
+                    show_progress_bar=False,
+                    convert_to_numpy=True
+                )
+                for skill, emb in zip(new_cv_skills, new_cv_embs):
+                    self._cv_embeddings_cache[skill.lower()] = emb
 
-            job_embeddings = {
-                skill: self.model.encode([skill.lower()], show_progress_bar=False)[0]
-                for skill in job_skills
-            }
+            # Job embeddings : encoder uniquement les nouveaux skills
+            new_job_skills = [s for s in job_skills if s.lower() not in self._job_embeddings_cache]
+            if new_job_skills:
+                new_job_embs = self.model.encode(
+                    [s.lower() for s in new_job_skills],
+                    batch_size=64,
+                    show_progress_bar=False,
+                    convert_to_numpy=True
+                )
+                for skill, emb in zip(new_job_skills, new_job_embs):
+                    self._job_embeddings_cache[skill.lower()] = emb
+
+            # Récupérer depuis le cache
+            cv_embeddings = {s: self._cv_embeddings_cache[s.lower()] for s in cv_skills}
+            job_embeddings = {s: self._job_embeddings_cache[s.lower()] for s in job_skills}
 
             matches = []
 
+            # 🚀 ASTUCE INTELLIGENTE : Vectorisation / Batching
+            # On met tous les embeddings dans deux listes
+            job_embs_list = [job_embeddings[job_skill] for job_skill in job_skills]
+            cv_embs_list = [cv_embeddings[cv_skill] for cv_skill in cv_skills]
+
+            # On fait UN SEUL appel à sklearn pour tout calculer d'un coup !
+            # sim_matrix contient toutes les combinaisons possibles (matrice)
+            sim_matrix = cosine_similarity(job_embs_list, cv_embs_list) * 100
+
             # Pour chaque skill de l'OFFRE
-            for job_skill in job_skills:
-                job_emb = job_embeddings[job_skill]
-
-                best_similarity = 0
-                best_cv_skill = None
-
-                # Comparer avec CHAQUE skill du CV (réutilise le cache)
-                for cv_skill in cv_skills:
-                    cv_emb = cv_embeddings[cv_skill]
-                    similarity = cosine_similarity(
-                        [job_emb], [cv_emb])[0][0] * 100
-
-                    if similarity > best_similarity:
-                        best_similarity = similarity
-                        best_cv_skill = cv_skill
+            for i, job_skill in enumerate(job_skills):
+                # Trouver l'index du meilleur score dans notre matrice pré-calculée
+                best_idx = sim_matrix[i].argmax()
+                best_similarity = sim_matrix[i][best_idx]
+                best_cv_skill = cv_skills[best_idx]
 
                 # Déterminer le statut du match
                 if best_similarity >= 40:

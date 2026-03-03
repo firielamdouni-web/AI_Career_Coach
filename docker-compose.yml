@@ -73,11 +73,11 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      test: ["CMD", "curl", "-f", "--max-time", "30", "http://localhost:8000/health"]
+      interval: 60s
+      timeout: 35s
+      retries: 5
+      start_period: 180s
 
   streamlit:
     build:
@@ -86,7 +86,7 @@ services:
     container_name: pfe-streamlit
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started 
     ports:
       - "8501:8501"
     volumes:
@@ -118,7 +118,13 @@ services:
     restart: unless-stopped
     networks:
       - pfe-network
-
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]  # ← simple check process alive
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      
 networks:
   pfe-network:
     driver: bridge

@@ -72,23 +72,20 @@ def extract_skills_via_api(cv_file):
         return None
 
 
-def recommend_jobs_via_api(cv_file, top_n=50, min_score=0.0, live_scrape=True):
-    """
-    Appelle /api/v1/recommend-jobs avec live_scrape=True pour inclure
-    les offres JSearch en temps réel.
-    """
+def recommend_jobs_via_api(cv_file, top_n=200, min_score=0.0, live_scrape=False):
+    """Appelle l'API de recommandation"""
     try:
-        cv_file.seek(0)
+        cv_file.seek(0)   # ← ajout seek(0) ici directement dans la fonction
         r = requests.post(
             f"{API_BASE_URL}/api/v1/recommend-jobs",
             files={"file": (cv_file.name, cv_file, "application/pdf")},
             params={
-                "top_n":        top_n,
-                "min_score":    min_score,
-                "use_faiss":    "false",
-                "live_scrape":  str(live_scrape).lower()
+                "top_n":       top_n,
+                "min_score":   min_score,
+                "use_faiss":   "false",
+                "live_scrape": "false"
             },
-            timeout=600  # 10 min car JSearch peut être lent
+            timeout=600   # ← 10 minutes, largement suffisant
         )
         if r.status_code == 200:
             return r.json()
@@ -99,7 +96,7 @@ def recommend_jobs_via_api(cv_file, top_n=50, min_score=0.0, live_scrape=True):
         st.error(f"❌ Recommandations échouées ({r.status_code}) : {detail}")
         return None
     except requests.exceptions.Timeout:
-        st.error("⏱️ Timeout — le scraping JSearch a pris trop de temps")
+        st.error("⏱️ Timeout — analyse trop longue. Réessayez.")
         return None
     except Exception as e:
         st.error(f"❌ {e}")
@@ -299,7 +296,8 @@ def main():
                     st.stop()
 
                 st.success(f"✅ {skills_result['total_skills']} compétences détectées")
-
+                
+                uploaded_file.seek(0)
                 # Étape 2 : recommandations (avec scraping temps réel)
                 with st.spinner(
                     "🌐 Scraping JSearch en temps réel + calcul des scores... "

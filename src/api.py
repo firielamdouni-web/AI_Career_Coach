@@ -435,7 +435,7 @@ async def recommend_jobs(
     top_n: int = Query(50, ge=1, le=200, description="Nombre de recommandations"),  # ← le=200
     min_score: float = Query(0.0, ge=0.0, le=100.0, description="Score minimum"),
     use_faiss: bool = Query(False, description="Utiliser FAISS"),
-    live_scrape: bool = Query(True, description="Scraper en temps réel via JSearch")
+    live_scrape: bool = Query(False, description="Scraper en temps réel via JSearch")
 ):
     """
     🎯 Analyse un CV PDF et retourne les meilleures offres (locales + réelles JSearch).
@@ -527,6 +527,18 @@ async def recommend_jobs(
             f"({local_count} locaux + {scraped_count} scrapés)"
         )
 
+        # Pré-charger l'IA avec tous les mots d'un coup (Batch Encoding)
+        all_unique_skills = set()
+        for j in candidate_jobs:
+            all_unique_skills.update(matcher.extract_job_skills(j))
+            
+        missing_embs = [s.lower() for s in all_unique_skills if s.lower() not in matcher._job_embeddings_cache]
+        if missing_embs:
+            logger.info(f"⚡ Batch Processing : Encodage rapide de {len(missing_embs)} compétences en 1 seul bloc...")
+            bulk_embs = matcher.model.encode(missing_embs, batch_size=256, show_progress_bar=False, convert_to_numpy=True)
+            for s_name, emb in zip(missing_embs, bulk_embs):
+                matcher._job_embeddings_cache[s_name.lower()] = emb
+                
         # ── 5. Scorer chaque job ──────────────────────────────────────────
         detailed_results = []
 
@@ -574,13 +586,14 @@ async def recommend_jobs(
                         job_technical_skills=job_tech,
                         job_soft_skills=job_soft,
                         skills_details=detailed_score['skills_details'],
-                        cv_raw_text=cv_text,
+                        cv_raw_text=cv_text,    
                         job_raw_text=job_raw,
                         sentence_model=matcher.model
                     )
                     ml_result = ml_predictor.predict(ml_feat)
                 except Exception as e:
                     logger.warning(f"ML error: {e}")
+                    pass   # ← TRÈS IMPORTANT : il manquait cette ligne !
 
             detailed_results.append({
                 'job_id': job['job_id'],
@@ -701,7 +714,7 @@ async def simulate_interview(request: InterviewRequest):
         dataset = get_jobs_dataset()
         job = next((j for j in dataset['jobs'] if j['job_id'] == request.job_id), None)
 
-        # 2) DB scrapés (avec ou sans préfixe sc_)
+        # 2) DB scrapés — REVERT mod 3 : raise 404 DANS le bloc if job is None
         if job is None:
             try:
                 db = get_db_manager()
@@ -715,21 +728,24 @@ async def simulate_interview(request: InterviewRequest):
                     row = dict(row)
                     requirements = _parse_skills_field(row.get('required_skills'))
                     job = {
-                        "job_id": row.get('job_id'),
-                        "title": row.get('title', ''),
-                        "description": row.get('description', ''),
+                        "job_id":       row.get('job_id'),
+                        "title":        row.get('title', ''),
+                        "description":  row.get('description', ''),
                         "requirements": requirements,
                     }
+                else:
+                    raise HTTPException(        # ← REVERT mod 3 : raise DANS le try
+                        status_code=404,
+                        detail=f"Offre '{request.job_id}' introuvable"
+                    )
+            except HTTPException:
+                raise
             except Exception as e:
                 logger.warning(f"DB lookup error: {e}")
-                job = None  # ← IMPORTANT : s'assurer que job reste None si DB échoue
-
-        # ← CORRECTION : vérification APRÈS les deux lookups
-        if job is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Offre '{request.job_id}' introuvable"
-            )
+                raise HTTPException(            # ← REVERT mod 3
+                    status_code=404,
+                    detail=f"Offre '{request.job_id}' introuvable"
+                )
 
         simulator = get_interview_simulator()
         questions = simulator.generate_questions(
@@ -740,10 +756,10 @@ async def simulate_interview(request: InterviewRequest):
             num_questions=request.num_questions
         )
         return {
-            "job_title": job.get('title', ''),
-            "rh_questions": questions['rh_questions'],
+            "job_title":           job.get('title', ''),
+            "rh_questions":        questions['rh_questions'],
             "technical_questions": questions['technical_questions'],
-            "total_questions": len(questions['rh_questions']) + len(questions['technical_questions'])
+            "total_questions":     len(questions['rh_questions']) + len(questions['technical_questions'])
         }
     except HTTPException:
         raise
@@ -832,28 +848,25 @@ async def get_job(job_id: str):
                 "description": job['description'],
                 "skills_required": job.get('requirements', [])
             }
-        # Chercher dans scrapés
+        # Chercher dans scrapés                ← REVERT mod 2 : pas de try/except
         raw_id = job_id.replace('sc_', '')
-        try:                                   # ← AJOUT : try/except autour de la DB
-            db = get_db_manager()
-            db.cursor.execute(
-                "SELECT * FROM scraped_jobs WHERE job_id = %s OR job_id = %s LIMIT 1",
-                (job_id, raw_id)
-            )
-            row = db.cursor.fetchone()
-            if row:
-                row = dict(row)
-                return {
-                    "job_id": row['job_id'], "title": row['title'],
-                    "company": row['company'], "location": row['location'],
-                    "remote": bool(row.get('is_remote')),
-                    "experience_required": "Non spécifié",
-                    "category": "Réel (JSearch)",
-                    "description": row.get('description', ''),
-                    "skills_required": _parse_skills_field(row.get('required_skills'))
-                }
-        except Exception:
-            pass                               # ← Si DB down, on tombe sur le 404
+        db = get_db_manager()
+        db.cursor.execute(
+            "SELECT * FROM scraped_jobs WHERE job_id = %s OR job_id = %s LIMIT 1",
+            (job_id, raw_id)
+        )
+        row = db.cursor.fetchone()
+        if row:
+            row = dict(row)
+            return {
+                "job_id": row['job_id'], "title": row['title'],
+                "company": row['company'], "location": row['location'],
+                "remote": bool(row.get('is_remote')),
+                "experience_required": "Non spécifié",
+                "category": "Réel (JSearch)",
+                "description": row.get('description', ''),
+                "skills_required": _parse_skills_field(row.get('required_skills'))
+            }
 
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' introuvable")
 

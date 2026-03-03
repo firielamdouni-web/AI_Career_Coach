@@ -113,11 +113,12 @@ def client():
         mock_vs_inst.index.ntotal = 2
         mock_vs.return_value = mock_vs_inst
 
-        # Database
+        # Database — fetchone=None par défaut pour éviter les faux positifs
         mock_db_inst = MagicMock()
         mock_db_inst.save_cv_analysis.return_value = 1
         mock_db_inst.save_job_recommendation.return_value = 1
         mock_db_inst.cursor.fetchone.return_value = None
+        mock_db_inst.cursor.fetchall.return_value = []
         mock_db.return_value = mock_db_inst
 
         # Interview Simulator
@@ -154,6 +155,18 @@ class TestRoot:
         response = client.get("/")
         assert response.json()["version"] == "1.0.0"
 
+    def test_root_contains_status(self, client):
+        response = client.get("/")
+        assert response.json()["status"] == "operational"
+
+    def test_root_contains_documentation_link(self, client):
+        response = client.get("/")
+        assert response.json()["documentation"] == "/docs"
+
+    def test_root_contains_message(self, client):
+        response = client.get("/")
+        assert "message" in response.json()
+
 
 # ============================================================================
 # TESTS HEALTH
@@ -173,6 +186,20 @@ class TestHealth:
         response = client.get("/health")
         assert response.json()["jobs_available"] == 2
 
+    def test_health_response_schema(self, client):
+        response = client.get("/health")
+        data = response.json()
+        for field in ["status", "message", "version", "models_loaded", "jobs_available"]:
+            assert field in data
+
+    def test_health_version_field(self, client):
+        response = client.get("/health")
+        assert response.json()["version"] == "1.0.0"
+
+    def test_health_models_loaded_is_bool(self, client):
+        response = client.get("/health")
+        assert isinstance(response.json()["models_loaded"], bool)
+
 
 # ============================================================================
 # TESTS STATS
@@ -191,6 +218,41 @@ class TestStats:
     def test_stats_contains_remote_jobs(self, client):
         response = client.get("/api/v1/stats")
         assert response.json()["remote_jobs"] == 1
+
+    def test_stats_on_site_jobs(self, client):
+        response = client.get("/api/v1/stats")
+        data = response.json()
+        assert data["on_site_jobs"] == data["total_jobs"] - data["remote_jobs"]
+
+    def test_stats_jobs_by_category_is_dict(self, client):
+        response = client.get("/api/v1/stats")
+        assert isinstance(response.json()["jobs_by_category"], dict)
+
+    def test_stats_jobs_by_category_counts(self, client):
+        response = client.get("/api/v1/stats")
+        categories = response.json()["jobs_by_category"]
+        assert categories.get("Data Science") == 1
+        assert categories.get("ML Engineering") == 1
+
+    def test_stats_model_used_field(self, client):
+        response = client.get("/api/v1/stats")
+        assert "model_used" in response.json()
+
+    def test_stats_technical_skills_count_positive(self, client):
+        response = client.get("/api/v1/stats")
+        assert response.json()["total_technical_skills"] > 0
+
+    def test_stats_soft_skills_count_positive(self, client):
+        response = client.get("/api/v1/stats")
+        assert response.json()["total_soft_skills"] > 0
+
+    def test_stats_complete_schema(self, client):
+        response = client.get("/api/v1/stats")
+        data = response.json()
+        for field in ["total_jobs", "jobs_by_category", "remote_jobs",
+                      "on_site_jobs", "total_technical_skills",
+                      "total_soft_skills", "model_used"]:
+            assert field in data
 
 
 # ============================================================================
@@ -212,15 +274,46 @@ class TestListJobs:
         jobs = response.json()
         assert all(job["remote"] for job in jobs)
 
+    def test_list_jobs_filter_remote_false(self, client):
+        response = client.get("/api/v1/jobs?remote=false")
+        jobs = response.json()
+        assert all(not job["remote"] for job in jobs)
+
     def test_list_jobs_filter_category(self, client):
         response = client.get("/api/v1/jobs?category=Data+Science")
         jobs = response.json()
         assert len(jobs) == 1
         assert jobs[0]["title"] == "Data Scientist"
 
+    def test_list_jobs_filter_nonexistent_category(self, client):
+        response = client.get("/api/v1/jobs?category=NonExistent")
+        assert response.json() == []
+
     def test_list_jobs_limit(self, client):
         response = client.get("/api/v1/jobs?limit=1")
         assert len(response.json()) == 1
+
+    def test_list_jobs_schema(self, client):
+        response = client.get("/api/v1/jobs")
+        job = response.json()[0]
+        for field in ["job_id", "title", "company", "location",
+                      "remote", "experience_required", "category",
+                      "description", "skills_required"]:
+            assert field in job
+
+    def test_list_jobs_returns_list(self, client):
+        response = client.get("/api/v1/jobs")
+        assert isinstance(response.json(), list)
+
+    def test_list_jobs_remote_true_count(self, client):
+        response = client.get("/api/v1/jobs?remote=true")
+        assert len(response.json()) == 1
+
+    def test_list_jobs_ml_engineering_category(self, client):
+        response = client.get("/api/v1/jobs?category=ML+Engineering")
+        jobs = response.json()
+        assert len(jobs) == 1
+        assert jobs[0]["title"] == "ML Engineer"
 
 
 # ============================================================================
@@ -243,6 +336,55 @@ class TestGetJob:
         data = response.json()
         for field in ["job_id", "title", "company", "location", "description"]:
             assert field in data
+
+    def test_get_job_002(self, client):
+        response = client.get("/api/v1/jobs/job_002")
+        assert response.status_code == 200
+        assert response.json()["title"] == "ML Engineer"
+
+    def test_get_job_correct_company(self, client):
+        response = client.get("/api/v1/jobs/job_001")
+        assert response.json()["company"] == "TechCorp"
+
+    def test_get_job_correct_location(self, client):
+        response = client.get("/api/v1/jobs/job_002")
+        assert response.json()["location"] == "Lyon"
+
+    def test_get_job_remote_field_is_bool(self, client):
+        response = client.get("/api/v1/jobs/job_001")
+        assert isinstance(response.json()["remote"], bool)
+
+    def test_get_job_skills_required_is_list(self, client):
+        response = client.get("/api/v1/jobs/job_001")
+        assert isinstance(response.json()["skills_required"], list)
+
+    def test_get_scraped_job_via_db(self, client):
+        """job_id sc_ trouvé en DB → 200"""
+        with patch('src.api.get_db_manager') as mock_db_local:
+            mock_cursor = MagicMock()
+            mock_cursor.fetchone.return_value = {
+                'job_id': 'sc_db001',
+                'title': 'DevOps Engineer',
+                'company': 'CloudCorp',
+                'location': 'Remote',
+                'description': 'CI/CD pipelines.',
+                'is_remote': True,
+                'required_skills': '["Docker","Kubernetes"]',
+            }
+            mock_db_inst = MagicMock()
+            mock_db_inst.cursor = mock_cursor
+            mock_db_local.return_value = mock_db_inst
+
+            response = client.get("/api/v1/jobs/sc_db001")
+        assert response.status_code == 200
+        assert response.json()["title"] == "DevOps Engineer"
+
+    def test_get_scraped_job_db_failure_returns_404(self, client):
+        """DB inaccessible pour job sc_ → 404"""
+        with patch('src.api.get_db_manager') as mock_db_fail:
+            mock_db_fail.side_effect = Exception("DB down")
+            response = client.get("/api/v1/jobs/sc_unknown")
+        assert response.status_code == 404
 
 
 # ============================================================================
@@ -281,9 +423,58 @@ class TestExtractSkills:
             files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
         )
         data = response.json()
-        expected_total = len(data["technical_skills"]
-                             ) + len(data["soft_skills"])
+        expected_total = len(data["technical_skills"]) + len(data["soft_skills"])
         assert data["total_skills"] == expected_total
+
+    def test_extract_skills_technical_skills_are_list(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert isinstance(response.json()["technical_skills"], list)
+
+    def test_extract_skills_soft_skills_are_list(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert isinstance(response.json()["soft_skills"], list)
+
+    def test_extract_skills_cv_text_length_positive(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert response.json()["cv_text_length"] > 0
+
+    def test_extract_skills_expected_technical_skills(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert "Python" in response.json()["technical_skills"]
+
+    def test_extract_skills_schema(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        data = response.json()
+        for field in ["technical_skills", "soft_skills", "total_skills", "cv_text_length"]:
+            assert field in data
+
+    def test_extract_skills_jpg_returns_400(self, client):
+        fake_file = io.BytesIO(b"fake image")
+        response = client.post(
+            "/api/v1/extract-skills",
+            files={"file": ("cv.jpg", fake_file, "image/jpeg")}
+        )
+        assert response.status_code == 400
 
 
 # ============================================================================
@@ -330,6 +521,129 @@ class TestRecommendJobs:
         data = response.json()
         assert len(data["recommendations"]) <= 1
 
+    def test_recommend_jobs_schema(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        data = response.json()
+        for field in ["recommendations", "total_jobs_analyzed",
+                      "cv_skills_count", "local_jobs_count", "scraped_jobs_count"]:
+            assert field in data
+
+    def test_recommend_jobs_recommendations_is_list(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert isinstance(response.json()["recommendations"], list)
+
+    def test_recommend_jobs_cv_skills_count_positive(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert response.json()["cv_skills_count"] > 0
+
+    def test_recommend_jobs_recommendation_schema(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        recs = response.json()["recommendations"]
+        assert len(recs) > 0
+        rec = recs[0]
+        for field in ["job_id", "title", "company", "score",
+                      "matching_skills", "missing_skills"]:
+            assert field in rec
+
+    def test_recommend_jobs_score_is_float(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        recs = response.json()["recommendations"]
+        assert all(isinstance(r["score"], float) for r in recs)
+
+    def test_recommend_jobs_sorted_by_score_desc(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        scores = [r["score"] for r in response.json()["recommendations"]]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_recommend_jobs_min_score_filter(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs?min_score=80.0",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        recs = response.json()["recommendations"]
+        assert all(r["score"] >= 80.0 for r in recs)
+
+    def test_recommend_jobs_local_jobs_count(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert response.json()["local_jobs_count"] == 2
+
+    def test_recommend_jobs_total_analyzed_geq_local(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        data = response.json()
+        assert data["total_jobs_analyzed"] >= data["local_jobs_count"]
+
+    def test_recommend_jobs_top_n_invalid_too_high_returns_422(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs?top_n=999",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert response.status_code == 422
+
+    def test_recommend_jobs_top_n_zero_returns_422(self, client):
+        fake_pdf = self._make_pdf()
+        response = client.post(
+            "/api/v1/recommend-jobs?top_n=0",
+            files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+        )
+        assert response.status_code == 422
+
+    def test_recommend_jobs_with_ml_predictor_loaded(self, client):
+        """Quand ML est chargé, ml_available doit être True dans les résultats"""
+        with patch('src.api.get_ml_predictor') as mock_ml_loaded:
+            mock_ml_inst = MagicMock()
+            mock_ml_inst.is_loaded = True
+            mock_ml_inst.compute_features.return_value = {"feature_1": 0.5}
+            mock_ml_inst.predict.return_value = {
+                "ml_available": True,
+                "ml_label": "Perfect Fit",
+                "ml_score": 0.9,
+                "ml_probabilities": {"No Fit": 0.05, "Partial Fit": 0.05, "Perfect Fit": 0.9}
+            }
+            mock_ml_loaded.return_value = mock_ml_inst
+
+            fake_pdf = io.BytesIO(b"%PDF fake content")
+            response = client.post(
+                "/api/v1/recommend-jobs",
+                files={"file": ("cv.pdf", fake_pdf, "application/pdf")}
+            )
+        assert response.status_code == 200
+        recs = response.json()["recommendations"]
+        assert any(r["ml_available"] for r in recs)
+
 
 # ============================================================================
 # TESTS SIMULATE INTERVIEW
@@ -340,30 +654,19 @@ class TestSimulateInterview:
     def test_simulate_interview_valid_job(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={
-                "cv_skills": [
-                    "Python",
-                    "SQL"],
-                "job_id": "job_001",
-                "num_questions": 4})
+            json={"cv_skills": ["Python", "SQL"], "job_id": "job_001", "num_questions": 4})
         assert response.status_code == 200
 
     def test_simulate_interview_invalid_job(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={
-                "cv_skills": ["Python"],
-                "job_id": "job_999",
-                "num_questions": 4})
+            json={"cv_skills": ["Python"], "job_id": "job_999", "num_questions": 4})
         assert response.status_code == 404
 
     def test_simulate_interview_returns_questions(self, client):
         response = client.post(
             "/api/v1/simulate-interview",
-            json={
-                "cv_skills": ["Python"],
-                "job_id": "job_001",
-                "num_questions": 4})
+            json={"cv_skills": ["Python"], "job_id": "job_001", "num_questions": 4})
         data = response.json()
         assert "rh_questions" in data
         assert "technical_questions" in data
@@ -391,9 +694,7 @@ class TestEvaluateAnswer:
             json={
                 "question": "Parlez-moi de Python.",
                 "answer": "Oui.",
-                "question_type": "technique"
-            }
-        )
+                "question_type": "technique"})
         assert response.status_code == 400
 
     def test_evaluate_answer_contains_score(self, client):
@@ -407,10 +708,59 @@ class TestEvaluateAnswer:
         assert "score" in data
         assert 0 <= data["score"] <= 100
 
+    def test_evaluate_answer_schema(self, client):
+        response = client.post(
+            "/api/v1/evaluate-answer",
+            json={
+                "question": "Parlez-moi de Python.",
+                "answer": "J'utilise Python depuis 2 ans pour faire du data science.",
+                "question_type": "technique"})
+        data = response.json()
+        for field in ["score", "evaluation", "points_forts",
+                      "points_amelioration", "recommandations"]:
+            assert field in data
+
+    def test_evaluate_answer_points_forts_is_list(self, client):
+        response = client.post(
+            "/api/v1/evaluate-answer",
+            json={
+                "question": "Parlez-moi de Python.",
+                "answer": "J'utilise Python depuis 2 ans pour faire du data science.",
+                "question_type": "technique"})
+        assert isinstance(response.json()["points_forts"], list)
+
+    def test_evaluate_answer_with_target_skill(self, client):
+        response = client.post(
+            "/api/v1/evaluate-answer",
+            json={
+                "question": "Expliquez Docker.",
+                "answer": "Docker permet de conteneuriser les applications facilement.",
+                "question_type": "technique",
+                "target_skill": "Docker"})
+        assert response.status_code == 200
+
+    def test_evaluate_answer_empty_answer_returns_400(self, client):
+        response = client.post(
+            "/api/v1/evaluate-answer",
+            json={
+                "question": "Parlez-moi de Python.",
+                "answer": "",
+                "question_type": "technique"})
+        assert response.status_code == 400
+
+    def test_evaluate_answer_whitespace_only_returns_400(self, client):
+        response = client.post(
+            "/api/v1/evaluate-answer",
+            json={
+                "question": "Parlez-moi de Python.",
+                "answer": "   ",
+                "question_type": "technique"})
+        assert response.status_code == 400
+
+
 # ============================================================================
 # TESTS SIMULATE INTERVIEW — SCRAPÉS + CAS LIMITES
 # ============================================================================
-
 
 class TestSimulateInterviewExtended:
 
@@ -423,10 +773,7 @@ class TestSimulateInterviewExtended:
         assert response.status_code == 404
 
     def test_simulate_interview_scraped_job_via_db(self, client):
-        """
-        job_id avec préfixe sc_ introuvable en local →
-        DB retourne une ligne → 200 avec le titre de la ligne DB
-        """
+        """DB retourne une ligne → 200 avec le titre de la ligne DB"""
         with patch('src.api.get_db_manager') as mock_db_scraped:
             mock_cursor = MagicMock()
             mock_cursor.fetchone.return_value = {
@@ -483,7 +830,7 @@ class TestSimulateInterviewExtended:
         assert data["total_questions"] == len(data["rh_questions"]) + len(data["technical_questions"])
 
     def test_simulate_interview_empty_skills_still_works(self, client):
-        """cv_skills vide → l'endpoint ne doit pas planter (géré par le simulator)"""
+        """cv_skills vide → l'endpoint ne doit pas planter"""
         response = client.post(
             "/api/v1/simulate-interview",
             json={"cv_skills": [], "job_id": "job_001", "num_questions": 4}
@@ -491,10 +838,7 @@ class TestSimulateInterviewExtended:
         assert response.status_code == 200
 
     def test_simulate_interview_sc_prefix_stripped_for_db_lookup(self, client):
-        """
-        Quand job_id='sc_XYZ', le raw_id='XYZ' doit aussi être cherché en DB.
-        Si DB retourne None pour les deux → 404.
-        """
+        """DB retourne None pour sc_ → 404"""
         with patch('src.api.get_db_manager') as mock_db_none:
             mock_cursor = MagicMock()
             mock_cursor.fetchone.return_value = None
@@ -507,3 +851,127 @@ class TestSimulateInterviewExtended:
                 json={"cv_skills": ["Python"], "job_id": "sc_inexistant", "num_questions": 4}
             )
         assert response.status_code == 404
+
+    def test_simulate_interview_job_title_matches_dataset(self, client):
+        """Le job_title retourné doit correspondre au dataset"""
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python"], "job_id": "job_001", "num_questions": 4}
+        )
+        assert response.json()["job_title"] == "Data Scientist"
+
+    def test_simulate_interview_job_002_title(self, client):
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python", "Docker"], "job_id": "job_002", "num_questions": 4}
+        )
+        assert response.json()["job_title"] == "ML Engineer"
+
+    def test_simulate_interview_rh_questions_not_empty(self, client):
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python"], "job_id": "job_001", "num_questions": 4}
+        )
+        assert len(response.json()["rh_questions"]) > 0
+
+    def test_simulate_interview_technical_questions_not_empty(self, client):
+        response = client.post(
+            "/api/v1/simulate-interview",
+            json={"cv_skills": ["Python"], "job_id": "job_001", "num_questions": 4}
+        )
+        assert len(response.json()["technical_questions"]) > 0
+
+    def test_simulate_interview_scraped_job_missing_fields_uses_defaults(self, client):
+        """DB retourne une ligne minimale sans description → pas d'erreur"""
+        with patch('src.api.get_db_manager') as mock_db_minimal:
+            mock_cursor = MagicMock()
+            mock_cursor.fetchone.return_value = {
+                'job_id': 'sc_minimal',
+                'title': 'Minimal Job',
+                'description': None,
+                'required_skills': None,
+            }
+            mock_db_inst = MagicMock()
+            mock_db_inst.cursor = mock_cursor
+            mock_db_minimal.return_value = mock_db_inst
+
+            response = client.post(
+                "/api/v1/simulate-interview",
+                json={"cv_skills": ["Python"], "job_id": "sc_minimal", "num_questions": 2}
+            )
+        assert response.status_code == 200
+        assert response.json()["job_title"] == "Minimal Job"
+
+
+# ============================================================================
+# TESTS SCRAPED JOBS ENDPOINT
+# ============================================================================
+
+class TestScrapedJobs:
+
+    def test_scraped_jobs_returns_200(self, client):
+        response = client.get("/api/v1/scraped-jobs")
+        assert response.status_code == 200
+
+    def test_scraped_jobs_schema(self, client):
+        response = client.get("/api/v1/scraped-jobs")
+        data = response.json()
+        assert "total" in data
+        assert "jobs" in data
+
+    def test_scraped_jobs_jobs_is_list(self, client):
+        response = client.get("/api/v1/scraped-jobs")
+        assert isinstance(response.json()["jobs"], list)
+
+    def test_scraped_jobs_empty_when_db_empty(self, client):
+        response = client.get("/api/v1/scraped-jobs")
+        assert response.json()["total"] == 0
+
+    def test_scraped_jobs_limit_param(self, client):
+        response = client.get("/api/v1/scraped-jobs?limit=10")
+        assert response.status_code == 200
+
+    def test_scraped_jobs_limit_too_high_returns_422(self, client):
+        response = client.get("/api/v1/scraped-jobs?limit=999")
+        assert response.status_code == 422
+
+    def test_scraped_jobs_source_filter(self, client):
+        response = client.get("/api/v1/scraped-jobs?source=jsearch")
+        assert response.status_code == 200
+
+
+# ============================================================================
+# TESTS FAISS STATS
+# ============================================================================
+
+class TestFaissStats:
+
+    def test_faiss_stats_returns_200(self, client):
+        response = client.get("/api/v1/faiss-stats")
+        assert response.status_code == 200
+
+    def test_faiss_stats_schema(self, client):
+        response = client.get("/api/v1/faiss-stats")
+        data = response.json()
+        for field in ["faiss_enabled", "total_jobs_indexed",
+                      "model_used", "embedding_dimension"]:
+            assert field in data
+
+    def test_faiss_stats_total_jobs_indexed(self, client):
+        response = client.get("/api/v1/faiss-stats")
+        assert response.json()["total_jobs_indexed"] >= 0
+
+
+# ============================================================================
+# TESTS 404 HANDLER
+# ============================================================================
+
+class TestErrorHandlers:
+
+    def test_unknown_endpoint_returns_404(self, client):
+        response = client.get("/api/v1/nonexistent-endpoint")
+        assert response.status_code == 404
+
+    def test_404_response_contains_detail(self, client):
+        response = client.get("/api/v1/nonexistent-endpoint")
+        assert "detail" in response.json()
