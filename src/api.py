@@ -432,7 +432,7 @@ async def extract_skills(file: UploadFile = File(...)):
           tags=["Jobs"])
 async def recommend_jobs(
     file: UploadFile = File(...),
-    top_n: int = Query(50, ge=1, le=200, description="Nombre de recommandations"),  # ← le=200
+    top_n: int = Query(1000, ge=1, le=5000, description="Nombre de recommandations"),  # ← le=5000 (était 200)
     min_score: float = Query(0.0, ge=0.0, le=100.0, description="Score minimum"),
     use_faiss: bool = Query(False, description="Utiliser FAISS"),
     live_scrape: bool = Query(False, description="Scraper en temps réel via JSearch")

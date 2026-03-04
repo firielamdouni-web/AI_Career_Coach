@@ -33,6 +33,7 @@ class MLPredictor:
         self.model = None
         self.scaler = None
         self._loaded = False
+        self._text_emb_cache = {}
         self._load_model()
 
     def _load_model(self):
@@ -126,12 +127,16 @@ class MLPredictor:
 
         # ── 4. Embedding similarity sur TEXTE COMPLET (comme compute_features) ──
         try:
-            embeddings = sentence_model.encode(
-                [cv_raw_text, job_raw_text],
-                show_progress_bar=False
-            )
+            if cv_raw_text not in self._text_emb_cache:
+                self._text_emb_cache[cv_raw_text] = sentence_model.encode(cv_raw_text, show_progress_bar=False)
+            if job_raw_text not in self._text_emb_cache:
+                self._text_emb_cache[job_raw_text] = sentence_model.encode(job_raw_text, show_progress_bar=False)
+
+            cv_emb = self._text_emb_cache[cv_raw_text]
+            job_emb = self._text_emb_cache[job_raw_text]
+
             embedding_similarity = float(
-                cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
+                cosine_similarity([cv_emb], [job_emb])[0][0]
             )
         except Exception:
             embedding_similarity = 0.0

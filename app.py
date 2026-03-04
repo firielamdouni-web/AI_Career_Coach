@@ -18,17 +18,108 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-.main-header { font-size:2.5rem; font-weight:bold; text-align:center; color:#1f77b4; margin-bottom:.5rem; }
-.sub-header  { font-size:1.1rem; text-align:center; color:#666; margin-bottom:2rem; }
-.source-local   { background:#e3f2fd; color:#1565c0; padding:2px 8px; border-radius:12px; font-size:.8rem; font-weight:bold; }
-.source-scraped { background:#e8f5e9; color:#2e7d32; padding:2px 8px; border-radius:12px; font-size:.8rem; font-weight:bold; }
-.score-badge { display:inline-block; padding:.3rem .8rem; border-radius:20px; font-weight:bold; font-size:1.1rem; }
-.score-excellent { background:#4CAF50; color:white; }
-.score-good      { background:#FFC107; color:#333; }
-.score-medium    { background:#FF9800; color:white; }
-.score-low       { background:#9E9E9E; color:white; }
+/* 1. Fond de page bleu ciel avec motif (Dot Grid stylisé) */
+.stApp {
+    background-color: #e0f2fe; /* Bleu ciel très clair */
+    background-image: radial-gradient(#bae6fd 2px, transparent 2px);
+    background-size: 30px 30px;
+}
+
+/* 2. Titre principal chargé, animé et texturé */
+.main-header { 
+    font-size: 3.8rem; 
+    font-weight: 900; 
+    text-align: center; 
+    background: linear-gradient(270deg, #1e3a8a, #3b82f6, #8b5cf6, #06b6d4); 
+    background-size: 300% 300%;
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+    margin-bottom: 0.5rem; 
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.15); /* Ombre douce 3D */
+    animation: gradient-shift 6s ease infinite; /* Animation du fond fluide */
+}
+
+/* Animation pour le dégradé du titre */
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.sub-header { 
+    font-size: 1.3rem; 
+    text-align: center; 
+    color: #334155; 
+    margin-bottom: 2.5rem; 
+    font-weight: 700; 
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* 3. Boutons "Bombés" (Effet Neumorphisme / 3D web moderne) */
+div.stButton > button:first-child { 
+    border-radius: 30px; 
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: linear-gradient(145deg, #ffffff, #e6f0fa); /* Dégradé effet bombé */
+    box-shadow: 5px 5px 10px rgba(0,0,0,0.1), -5px -5px 10px rgba(255,255,255,0.9); 
+    color: #1e3a8a;
+    font-weight: 800; 
+    font-size: 1.05rem;
+    transition: all 0.2s ease; 
+}
+
+/* Effet Hover (Survol) : le bouton se soulève */
+div.stButton > button:first-child:hover { 
+    transform: translateY(-3px); 
+    box-shadow: 8px 8px 15px rgba(0,0,0,0.15), -8px -8px 15px rgba(255,255,255,1); 
+    background: linear-gradient(145deg, #f0f7ff, #ffffff);
+}
+
+/* Effet Click : le bouton s'enfonce */
+div.stButton > button:first-child:active { 
+    transform: translateY(1px); 
+    box-shadow: inset 5px 5px 10px rgba(0,0,0,0.1), inset -5px -5px 10px rgba(255,255,255,0.8); 
+}
+
+/* Boutons spécifiquement Primaire (Bouton d'Analyse) avec un style bleu percutant */
+div.stButton > button[kind="primary"] {
+    background: linear-gradient(145deg, #2563eb, #1d4ed8);
+    color: white;
+    border: none;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.4), inset 0 2px 4px rgba(255,255,255,0.3);
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(145deg, #3b82f6, #2563eb);
+    color: white;
+    box-shadow: 0 12px 25px rgba(37, 99, 235, 0.5), inset 0 2px 5px rgba(255,255,255,0.4);
+}
+
+div.stButton > button[kind="primary"]:active {
+    box-shadow: inset 4px 4px 10px rgba(0,0,0,0.3); 
+}
+
+
+/* Badges Sources redessinés */
+.source-local   { background:#e3f2fd; color:#1565c0; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #bbdefb; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
+.source-scraped { background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #c8e6c9; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
+
+/* Scores avec dégradés et ombres */
+.score-badge { display:inline-block; padding:.4rem 1.2rem; border-radius:25px; font-weight:800; font-size:1.2rem; box-shadow: 0 4px 8px rgba(0,0,0,0.15); border: 2px solid rgba(255,255,255,0.5); }
+.score-excellent { background: linear-gradient(135deg, #4CAF50, #81C784); color:white; }
+.score-good      { background: linear-gradient(135deg, #FFC107, #FFD54F); color:#333; }
+.score-medium    { background: linear-gradient(135deg, #FF9800, #FFB74D); color:white; }
+.score-low       { background: linear-gradient(135deg, #9E9E9E, #E0E0E0); color:white; }
+
+/* Accentuation et ombrage 3D des chiffres fixes (Metrics) */
+div[data-testid="stMetricValue"] { 
+    color: #1e3a8a; 
+    font-weight: 900; 
+    font-size: 2.6rem; 
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.15);
+}
 </style>
 """, unsafe_allow_html=True)
+
 
 # ============================================================================
 # FONCTIONS API
@@ -234,7 +325,7 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
 # ============================================================================
 
 def main():
-    st.markdown('<div class="main-header">🎯 AI Career Coach</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><span style="-webkit-text-fill-color: #7c3aed; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">🎯</span> AI Career Coach</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="sub-header">Matching intelligent CV ↔ Offres réelles (LinkedIn · Indeed · Glassdoor)</div>',
         unsafe_allow_html=True
@@ -305,7 +396,7 @@ def main():
                 ):
                     reco_result = recommend_jobs_via_api(
                         uploaded_file,
-                        top_n=200,         # ← CHANGEMENT : était 25, inclut toutes les offres DB
+                        top_n=5000,        # ← CHANGEMENT : On demande jusqu'à 5000 offres
                         min_score=0.0,
                         live_scrape=False  # ← le scheduler alimente la DB 2x/jour
                     )
@@ -448,9 +539,15 @@ def main():
         st.info("💡 Réduisez le score minimum ou changez les filtres.")
         st.stop()
 
+    # ← CHANGEMENT : Générer dynamiquement les options de filtrage de quantité
+    display_options = [10, 50, 100, 200, 500, 1000, 2000, 3000, 5000]
+    if len(filtered) not in display_options:
+        display_options.append(len(filtered))
+    display_options = sorted(list(set(display_options))) # Trie et supprime les doublons
+
     num_show = st.selectbox(
         "Nombre d'offres à afficher",
-        options=[10, 20, 30, 50, len(filtered)],
+        options=display_options,
         index=0
     )
 

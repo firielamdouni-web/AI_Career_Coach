@@ -74,7 +74,8 @@ jobs:
           pip install -r requirements/base.txt
           pip install -r requirements/api.txt
           pip install pytest pytest-cov pytest-asyncio
-          pip install fastapi httpx PyPDF2 psycopg2-binary sentence-transformers joblib spacy
+          pip install fastapi httpx PyPDF2 pdfplumber psycopg2-binary sentence-transformers joblib spacy xgboost scikit-learn
+          python -m spacy download fr_core_news_sm
           python -m spacy download en_core_web_sm
 
       - name: Run tests with coverage
