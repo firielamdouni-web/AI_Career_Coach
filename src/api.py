@@ -2,7 +2,7 @@
 🎯 API FastAPI pour le système de matching CV ↔ Jobs
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -22,6 +22,8 @@ from .job_matcher import JobMatcher
 from .ml_predictor import get_ml_predictor
 from src.job_scraper import get_job_scraper
 
+import time
+
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -31,6 +33,30 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+@app.middleware("http")
+async def log_requests_middleware(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time_ms = (time.time() - start_time) * 1000
+
+    # N'enregistrer que les appels API métiers en excluant les routes internes comme /docs
+    if request.url.path.startswith("/api/v1/"):
+        try:
+            db_manager = get_db_manager()
+            query = """
+                INSERT INTO api_logs (endpoint, method, status_code, response_time_ms)
+                VALUES (%s, %s, %s, %s)
+            """
+            db_manager.cursor.execute(
+                query, 
+                (request.url.path, request.method, response.status_code, process_time_ms)
+            )
+            db_manager.conn.commit()
+        except Exception as e:
+            logger.error(f"Erreur lors du logging API : {e}")
+            
+    return response
 
 app.add_middleware(
     CORSMiddleware,
@@ -880,26 +906,59 @@ async def get_job(job_id: str):
 async def get_stats():
     try:
         dataset = get_jobs_dataset()
-        jobs = dataset['jobs']
+        local_jobs = dataset['jobs']
+        scraped_jobs = _get_scraped_jobs_from_db()
+        
+        all_jobs = local_jobs + scraped_jobs
         extractor = get_skills_extractor()
         categories = {}
         remote_count = 0
-        for job in jobs:
+        
+        for job in all_jobs:
             cat = job.get('category', 'Non spécifié')
             categories[cat] = categories.get(cat, 0) + 1
-            if job.get('remote_ok', False):
+            if job.get('remote_ok', False) or job.get('is_remote', False):
                 remote_count += 1
+                
         return {
-            "total_jobs": len(jobs),
+            "total_jobs": len(all_jobs),
             "jobs_by_category": categories,
             "remote_jobs": remote_count,
-            "on_site_jobs": len(jobs) - remote_count,
+            "on_site_jobs": len(all_jobs) - remote_count,
             "total_technical_skills": len(extractor.skills_database['technical_skills']),
             "total_soft_skills": len(extractor.skills_database['soft_skills']),
             "model_used": "all-mpnet-base-v2 (768 dimensions)"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/monitoring-data", tags=["Stats"])
+async def get_monitoring_data():
+    """Récupère les vraies données de la DB pour le Dashboard."""
+    try:
+        db = get_db_manager()
+        
+        # 1. Logs API (1000 derniers)
+        db.cursor.execute("SELECT timestamp, endpoint, status_code, response_time_ms FROM api_logs ORDER BY timestamp DESC LIMIT 1000")
+        raw_logs = db.cursor.fetchall()
+        logs = [{"timestamp": r['timestamp'].isoformat() if r['timestamp'] else None, "endpoint": r['endpoint'], "status_code": r['status_code'], "response_time_ms": r['response_time_ms']} for r in raw_logs]
+        
+        # 2. Distribution des scores (1000 derniers)
+        db.cursor.execute("SELECT score FROM job_recommendations ORDER BY recommended_at DESC LIMIT 1000")
+        scores = [float(r['score']) for r in db.cursor.fetchall()]
+        
+        # 3. Top compétences techniques extraites
+        db.cursor.execute("""
+            SELECT skill, COUNT(*) as count 
+            FROM (SELECT unnest(technical_skills) as skill FROM cv_analyses) s 
+            GROUP BY skill ORDER BY count DESC LIMIT 5
+        """)
+        top_skills = [{"skill": r['skill'], "count": r['count']} for r in db.cursor.fetchall()]
+        
+        return {"logs": logs, "scores": scores, "top_skills": top_skills}
+    except Exception as e:
+        logger.error(f"Erreur DB Monitoring: {e}")
+        return {"logs": [], "scores": [], "top_skills": []}
 
 
 @app.get("/api/v1/scrape-jobs", tags=["Jobs"])

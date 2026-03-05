@@ -91,3 +91,15 @@ ON CONFLICT (username) DO NOTHING;
 
 -- Afficher le statut
 SELECT 'PostgreSQL initialized successfully' as status;
+
+-- ============================================================================
+-- LOGS API (MONITORING)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS api_logs (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    endpoint VARCHAR(255) NOT NULL,
+    method VARCHAR(10) NOT NULL,
+    status_code INTEGER NOT NULL,
+    response_time_ms FLOAT NOT NULL
+);
