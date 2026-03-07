@@ -44,6 +44,22 @@ class DatabaseManager:
                 self.cursor.execute("SELECT 1")
         except psycopg2.Error:
             self._connect()
+    
+    def clean_old_scraped_jobs(self, days_to_keep: int = 30) -> int:
+        """Supprime les offres scrapées plus vieilles que 'days_to_keep' jours pour éviter l'explosion de la DB."""
+        try:
+            # En PostgreSQL, on peut utiliser NOW() - INTERVAL 'X days'
+            query = f"DELETE FROM scraped_jobs WHERE scraped_at < NOW() - INTERVAL '{days_to_keep} days'"
+            self.cursor.execute(query)
+            deleted_count = self.cursor.rowcount
+            self.conn.commit()
+            if deleted_count > 0:
+                logger.info(f"🧹 Nettoyage DB : {deleted_count} offres scrapées obsolètes supprimées.")
+            return deleted_count
+        except Exception as e:
+            logger.error(f"Erreur lors du nettoyage des vieilles offres : {e}")
+            self.conn.rollback()
+            return 0
 
     # ========================================================================
     # MÉTHODES POUR CV ANALYSES

@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import os
 import plotly.express as px
+import plotly.graph_objects as go
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
@@ -80,7 +81,7 @@ else:
 
 # -- CHARTS ML ET DATA --
 st.markdown("### 🧠 Modèles MLOps & Entraînements")
-col_ia1, col_ia2, col_ia3 = st.columns([1.5, 1.5, 1])
+col_ia1, col_ia2, col_ia3, col_ia4 = st.columns([1.5, 1.5, 1, 1]) # Ajout d'une 4ème colonne
 
 with col_ia1:
     if len(scores) > 0:
@@ -102,9 +103,38 @@ with col_ia2:
 with col_ia3:
     st.markdown("##### 🧱 Sources des Offres")
     df_sources = pd.DataFrame({
-        'Source': ['Base de données locale', 'Scraping JSearch'],
+        'Source': ['Base locale', 'Scraping JSearch'],
         'Quantité': [local_jobs, scraped_jobs]
     })
     fig_donut = px.pie(df_sources, names='Source', values='Quantité', hole=0.5, color='Source',
-                       color_discrete_map={'Base de données locale': '#f43f5e', 'Scraping JSearch': '#14b8a6'})
+                       color_discrete_map={'Base locale': '#f43f5e', 'Scraping JSearch': '#14b8a6'})
+    fig_donut.update_layout(margin=dict(t=30, b=10, l=10, r=10))
     st.plotly_chart(fig_donut, use_container_width=True)
+
+with col_ia4:
+    st.markdown("##### ⚠️ Quota API JSearch")
+    # Estimation : 1 requête = ~15 offres scrapées
+    QUOTA_MAX = 200
+    estimated_req = min(int(scraped_jobs / 15), QUOTA_MAX)
+    quota_left = QUOTA_MAX - estimated_req
+    
+    # Couleur dynamique : Rouge si < 20 requêtes, Orange si < 50, Vert sinon
+    color = "green" if quota_left > 50 else "orange" if quota_left > 20 else "red"
+    
+    fig_gauge = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = estimated_req,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': f"Restant estimé: {quota_left}", 'font': {'size': 14}},
+        gauge = {
+            'axis': {'range': [0, QUOTA_MAX]},
+            'bar': {'color': color},
+            'steps': [
+                {'range': [0, 150], 'color': "rgba(34, 197, 94, 0.2)"},   # Vert clair
+                {'range': [150, 180], 'color': "rgba(245, 158, 11, 0.2)"}, # Orange clair
+                {'range': [180, 200], 'color': "rgba(239, 68, 68, 0.2)"}   # Rouge clair
+            ],
+        }
+    ))
+    fig_gauge.update_layout(margin=dict(t=40, b=10, l=20, r=20), height=250)
+    st.plotly_chart(fig_gauge, use_container_width=True)

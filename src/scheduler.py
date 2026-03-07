@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 # ── Requêtes à scraper ────────────────────────────────────────────────────────
 SCRAPE_QUERIES = [
-    {"query": "Data Scientist", "location": "France", "num_pages": 2},
-    {"query": "Machine Learning Engineer", "location": "France", "num_pages": 2},
-    {"query": "Data Engineer", "location": "France", "num_pages": 2},
+    {"query": "Data Scientist", "location": "France", "num_pages": 1},
+    {"query": "Machine Learning Engineer", "location": "France", "num_pages": 1},
+    {"query": "Data Engineer", "location": "France", "num_pages": 1},
     {"query": "MLOps Engineer", "location": "France", "num_pages": 1},
     {"query": "AI Engineer", "location": "France", "num_pages": 1},
 ]
@@ -154,6 +154,12 @@ def run_daily_scrape():
 
         except Exception as e:
             logger.error(f"   ❌ Scraping échoué pour '{q['query']}': {e}")
+    
+    try:
+        cleanup_db = _get_fresh_db()
+        cleanup_db.clean_old_scraped_jobs(days_to_keep=30)
+    except Exception as e:
+        logger.error(f"⚠️ Impossible de nettoyer la DB : {e}")
 
     logger.info("-" * 50)
     logger.info(f"✅ Terminé : {total_new} nouveaux / {total_found} trouvés")
@@ -161,15 +167,14 @@ def run_daily_scrape():
 
 
 def main():
-    logger.info("🕐 Scheduler démarré — scraping 2x/jour (plan Free JSearch)")
-    logger.info("📅 Horaires : 08:00 | 18:00")
+    logger.info("🕐 Scheduler démarré — scraping 1x/jour (plan Free JSearch)")
+    logger.info("📅 Horaire : 08:00")
 
     # Scraper immédiatement au lancement
     run_daily_scrape()
 
-    # 2x/jour
+    # 1 SEULE FOIS PAR JOUR 
     schedule.every().day.at("08:00").do(run_daily_scrape)
-    schedule.every().day.at("18:00").do(run_daily_scrape)
 
     while True:
         next_run = schedule.next_run()
