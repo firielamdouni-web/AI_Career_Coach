@@ -42,6 +42,7 @@ async def log_requests_middleware(request: Request, call_next):
 
     # N'enregistrer que les appels API métiers en excluant les routes internes comme /docs
     if request.url.path.startswith("/api/v1/"):
+        db_manager = None
         try:
             db_manager = get_db_manager()
             query = """
@@ -54,6 +55,12 @@ async def log_requests_middleware(request: Request, call_next):
             )
             db_manager.conn.commit()
         except Exception as e:
+            # IMPORTANT: sinon Postgres reste en "transaction aborted"
+            try:
+                if db_manager is not None:
+                    db_manager.conn.rollback()
+            except Exception:
+                pass
             logger.error(f"Erreur lors du logging API : {e}")
             
     return response
@@ -104,7 +111,12 @@ def get_jobs_dataset() -> Dict:
         if not JOBS_DATASET_PATH.exists():
             raise FileNotFoundError(f"Dataset non trouvé : {JOBS_DATASET_PATH}")
         with open(JOBS_DATASET_PATH, 'r', encoding='utf-8') as f:
-            _jobs_dataset = json.load(f)
+            data = json.load(f)
+        # Tolérance si le fichier a été écrasé par une liste
+        if isinstance(data, list):
+            data = {"jobs": data}
+
+        _jobs_dataset = data
     return _jobs_dataset
 
 
@@ -960,7 +972,56 @@ async def get_monitoring_data():
         logger.error(f"Erreur DB Monitoring: {e}")
         return {"logs": [], "scores": [], "top_skills": []}
 
+@app.post("/api/v1/sync-jobs")
+def sync_jobs_from_db():
+    """
+    Recharge les jobs scrapés depuis Postgres et reconstruit FAISS si besoin,
+    SANS écraser data/jobs/jobs_dataset.json (dataset local).
+    """
+    db = None
+    try:
+        db = get_db_manager()
+        try:
+            db.conn.rollback()
+        except Exception:
+            pass
 
+        scraped_jobs = _get_scraped_jobs_from_db()
+
+        # Export debug séparé (ne casse pas le dataset local)
+        export_path = PROJECT_ROOT / "data" / "jobs" / "scraped_jobs_dataset.json"
+        export_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(export_path, "w", encoding="utf-8") as f:
+            json.dump({"jobs": scraped_jobs}, f, ensure_ascii=False, indent=2)
+
+        # (Optionnel) rebuild FAISS sur local + scraped
+        dataset = get_jobs_dataset()
+        local_jobs = dataset.get("jobs", [])
+        combined = local_jobs + scraped_jobs
+
+        vs = get_vector_store()
+        vs.build_index(combined, index_type="flat")
+
+        index_path = PROJECT_ROOT / "data" / "faiss_index" / "jobs.index"
+        metadata_path = PROJECT_ROOT / "data" / "faiss_index" / "jobs_metadata.pkl"
+        index_path.parent.mkdir(parents=True, exist_ok=True)
+        vs.save(str(index_path), str(metadata_path))
+
+        return {
+            "status": "success",
+            "scraped_jobs_loaded": len(scraped_jobs),
+            "local_jobs_loaded": len(local_jobs),
+            "combined_indexed": len(combined),
+            "export": str(export_path),
+        }
+    except Exception as e:
+        try:
+            if db is not None:
+                db.conn.rollback()
+        except Exception:
+            pass
+        return {"status": "error", "message": str(e)}
+    
 @app.get("/api/v1/scrape-jobs", tags=["Jobs"])
 async def scrape_jobs(
     query: str = "Data Scientist",

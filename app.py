@@ -176,7 +176,7 @@ def recommend_jobs_via_api(cv_file, top_n=200, min_score=0.0, live_scrape=False)
                 "use_faiss":   "false",
                 "live_scrape": "false"
             },
-            timeout=600   # ← 10 minutes, largement suffisant
+            timeout=1200   # ← 10 minutes, largement suffisant
         )
         if r.status_code == 200:
             return r.json()

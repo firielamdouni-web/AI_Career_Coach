@@ -89,6 +89,22 @@ class SkillsExtractor:
             f"   • Compétences techniques : {len(self.skills_database['technical_skills'])}")
         logger.info(
             f"   • Soft skills : {len(self.skills_database['soft_skills'])}")
+        self.variations_to_canonical = self._build_variations_map()
+        print(f"   • Variations : {len(self.variations_to_canonical)} mappings")
+
+    def _build_variations_map(self) -> Dict[str, str]:
+        """
+        Construire un mapping {variation → canonical}
+        Ex: {"ml" → "machine learning", "py" → "python"}
+        """
+        mapping = {}
+        
+        if 'variations' in self.skills_database:
+            for canonical, variations_list in self.skills_database['variations'].items():
+                for variation in variations_list:
+                    mapping[variation.lower()] = canonical
+        
+        return mapping
 
     def extract_skills_from_text(
         self,
@@ -127,8 +143,32 @@ class SkillsExtractor:
 
             if re.search(pattern, text_lower):
                 found_skills.add(skill)
+                
+            for variation, canonical in self.variations_to_canonical.items():
+                # Vérifier que le canonical est dans la liste demandée
+                canonical_in_list = any(
+                    s.lower() == canonical.lower() 
+                    for s in skills_list
+                )
+                if not canonical_in_list:
+                    continue
+                
+                # Chercher la variation dans le texte
+                if re.search(r'[^a-z0-9\s]', variation):
+                    escaped = re.escape(variation)
+                    pattern = r'(?:^|\s|[(\[{])' + escaped + r'(?:\s|$|[.,;:)\]}])'
+                else:
+                    pattern = r'\b' + re.escape(variation) + r'\b'
+                
+                if re.search(pattern, text_lower):
+                    # Ajouter le skill canonical (pas la variation)
+                    canonical_skill = next(
+                        (s for s in skills_list if s.lower() == canonical.lower()),
+                        canonical
+                    )
+                    found_skills.add(canonical_skill)
 
-        return sorted(found_skills)
+            return sorted(found_skills)
 
     def extract_from_cv(self, cv_text: str) -> Dict:
         """

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +21,44 @@ FEATURES = [
     'coverage', 'quality', 'nb_covered_skills', 'nb_missing_skills',
     'skills_ratio', 'similarity_mean', 'similarity_max', 'similarity_std',
     'top3_similarity_avg', 'tfidf_similarity', 'embedding_similarity',
-    'nb_resume_technical', 'nb_resume_soft', 'nb_job_technical', 'nb_job_soft'
+    'nb_resume_technical', 'nb_resume_soft', 'nb_job_technical', 'nb_job_soft',
+    'resume_text_length', 'resume_text_word_count', 'resume_text_unique_words',
+    'resume_text_avg_word_length', 'resume_text_sentence_count', 'resume_text_capital_ratio',
+    'job_description_text_length', 'job_description_text_word_count', 'job_description_text_unique_words',
+    'job_description_text_avg_word_length', 'job_description_text_sentence_count', 'job_description_text_capital_ratio',
 ]
 
 CLASS_LABELS = {0: 'No Fit', 1: 'Partial Fit', 2: 'Perfect Fit'}
 CLASS_SCORES = {0: 0.0, 1: 0.5, 2: 1.0}
 
-
+def _compute_text_features(text: str, prefix: str) -> Dict:
+    """Calcule les features textuelles pour un texte donné"""
+    if not text:
+        return {
+            f'{prefix}_text_length': 0,
+            f'{prefix}_text_word_count': 0,
+            f'{prefix}_text_unique_words': 0,
+            f'{prefix}_text_avg_word_length': 0.0,
+            f'{prefix}_text_sentence_count': 0,
+            f'{prefix}_text_capital_ratio': 0.0,
+        }
+    words = text.split()
+    return {
+        f'{prefix}_text_length':          len(text),
+        f'{prefix}_text_word_count':       len(words),
+        f'{prefix}_text_unique_words':     len(set(w.lower() for w in words)),
+        f'{prefix}_text_avg_word_length':  float(np.mean([len(w) for w in words])) if words else 0.0,
+        f'{prefix}_text_sentence_count':   len(re.findall(r'[.!?]+', text)),
+        f'{prefix}_text_capital_ratio':    sum(1 for c in text if c.isupper()) / len(text) if text else 0.0,
+    }
+    
 class MLPredictor:
 
     def __init__(self):
         self.model = None
         self.scaler = None
         self._loaded = False
-        self._text_emb_cache = {}
+        self._text_emb_cache = {}  # 🔥 GARDE ton cache d'optimisation
         self._load_model()
 
     def _load_model(self):
@@ -61,60 +86,74 @@ class MLPredictor:
         self,
         cv_technical_skills: List[str],
         cv_soft_skills: List[str],
-        job_technical_skills: List[str],   # ✅ CHANGÉ : séparé technical/soft
-        job_soft_skills: List[str],         # ✅ CHANGÉ : séparé technical/soft
-        # ✅ CHANGÉ : directement skills_details de JobMatcher
+        job_technical_skills: List[str],
+        job_soft_skills: List[str],
         skills_details: Dict,
-        cv_raw_text: str,                   # ✅ AJOUT : texte brut du CV
-        job_raw_text: str,                  # ✅ AJOUT : texte brut du Job
-        sentence_model                      # SentenceTransformer de JobMatcher
+        cv_raw_text: str,
+        job_raw_text: str,
+        sentence_model
     ) -> Dict[str, float]:
-        """
-        Calculer les 15 features EXACTEMENT comme compute_features_from_huggingface.py
-
-        Args:
-            cv_technical_skills: Skills techniques du CV
-            cv_soft_skills: Soft skills du CV
-            job_technical_skills: Skills techniques du Job
-            job_soft_skills: Soft skills du Job
-            skills_details: Résultat de calculate_job_match_score()['skills_details']
-            cv_raw_text: Texte brut complet du CV (pour TF-IDF et embedding)
-            job_raw_text: Texte brut complet du Job (pour TF-IDF et embedding)
-            sentence_model: SentenceTransformer déjà chargé dans JobMatcher
-        """
-
-        cv_all_skills = cv_technical_skills + cv_soft_skills
+        
+        cv_all_skills  = cv_technical_skills + cv_soft_skills
         job_all_skills = job_technical_skills + job_soft_skills
 
-        # ── 1. Features Skills Matching (EXACTEMENT comme compute_features) ──
-        coverage = float(skills_details.get('coverage', 0.0))
-        quality = float(skills_details.get('quality', 0.0))
-        nb_covered_skills = int(skills_details.get('covered_count', 0))
-        total_required = int(
-            skills_details.get(
-                'total_required',
-                len(job_all_skills)))
-        nb_missing_skills = total_required - nb_covered_skills
-        skills_ratio = len(cv_all_skills) / max(len(job_all_skills), 1)
+        # ── 1. Skills Matching ────────────────────────────────────────────────
+        # ✅ IDENTIQUE au dataset : seuils 65 / 40
+        THRESHOLD_STRICT   = 65
+        THRESHOLD_MODERATE = 40
 
-        # ── 2. Features Similarité (depuis top_matches SANS diviser par 100) ──
-        top_matches = skills_details.get('top_matches', [])
+        # ── 2. ✅ FIX PRINCIPAL : recalculer les similarités SKILL PAR SKILL
+        #        exactement comme dans compute_features_from_huggingface.py
+        if len(cv_all_skills) > 0 and len(job_all_skills) > 0:
+            cv_embs  = sentence_model.encode([s.lower() for s in cv_all_skills],  show_progress_bar=False)
+            job_embs = sentence_model.encode([s.lower() for s in job_all_skills], show_progress_bar=False)
 
-        if top_matches:
-            # ✅ CORRECTION : similarities sont déjà en 0-100 dans JobMatcher
-            similarities = [m.get('similarity', 0.0) for m in top_matches]
-            similarity_mean = float(np.mean(similarities))
-            similarity_max = float(np.max(similarities))
-            similarity_std = float(np.std(similarities))
-            top3 = sorted(similarities, reverse=True)[:3]
+            similarities      = []
+            nb_covered_skills = 0
+            nb_missing_count  = 0
+
+            for i, job_skill in enumerate(job_all_skills):
+                best_sim = 0.0
+
+                # Exact match en premier
+                for cv_skill in cv_all_skills:
+                    if cv_skill.lower() == job_skill.lower():
+                        best_sim = 100.0
+                        break
+
+                # Sinon similarité cosine * 100 (→ 0-100 comme dataset)
+                if best_sim < 100.0:
+                    sims     = cosine_similarity([job_embs[i]], cv_embs)[0] * 100
+                    best_sim = float(np.max(sims))
+
+                similarities.append(best_sim)
+
+                if best_sim >= THRESHOLD_STRICT:   nb_covered_skills += 1
+                if best_sim <  THRESHOLD_MODERATE: nb_missing_count  += 1
+
+            sim_array = np.array(similarities)
+            n_job     = len(job_all_skills)
+
+            # ✅ IDENTIQUE au dataset
+            coverage          = (nb_covered_skills / n_job) * 100
+            covered_sims      = [s for s in similarities if s >= THRESHOLD_STRICT]
+            quality           = float(np.mean(covered_sims)) if covered_sims else 0.0
+            nb_missing_skills = nb_missing_count
+            skills_ratio      = len(cv_all_skills) / max(n_job, 1)
+
+            similarity_mean     = float(sim_array.mean())
+            similarity_max      = float(sim_array.max())
+            similarity_std      = float(sim_array.std())
+            top3                = sorted(similarities, reverse=True)[:3]
             top3_similarity_avg = float(np.mean(top3))
-        else:
-            similarity_mean = 0.0
-            similarity_max = 0.0
-            similarity_std = 0.0
-            top3_similarity_avg = 0.0
 
-        # ── 3. TF-IDF similarity sur TEXTE COMPLET (comme compute_features) ──
+        else:
+            # Cas vide
+            coverage = quality = skills_ratio = 0.0
+            nb_covered_skills = nb_missing_skills = 0
+            similarity_mean = similarity_max = similarity_std = top3_similarity_avg = 0.0
+
+        # ── 3. TF-IDF ─────────────────────────────────────────────────────────
         try:
             tfidf = TfidfVectorizer(max_features=500, stop_words='english')
             tfidf.fit([cv_raw_text, job_raw_text])
@@ -125,7 +164,7 @@ class MLPredictor:
         except Exception:
             tfidf_similarity = 0.0
 
-        # ── 4. Embedding similarity sur TEXTE COMPLET (comme compute_features) ──
+        # ── 4. Embedding similarity sur TEXTE COMPLET (avec cache) ────────────
         try:
             if cv_raw_text not in self._text_emb_cache:
                 self._text_emb_cache[cv_raw_text] = sentence_model.encode(cv_raw_text, show_progress_bar=False)
@@ -147,7 +186,12 @@ class MLPredictor:
         nb_job_technical = len(job_technical_skills)   # ✅ CORRECTION
         nb_job_soft = len(job_soft_skills)              # ✅ CORRECTION
 
-        return {
+        # ── 6. Features textuelles (AJOUTÉ de ton binôme) ────────────────────
+        resume_feats = _compute_text_features(cv_raw_text, 'resume')
+        job_feats = _compute_text_features(job_raw_text, 'job_description')
+
+        # ── 7. Assembler toutes les features ──────────────────────────────────
+        result = {
             'coverage': coverage,
             'quality': quality,
             'nb_covered_skills': float(nb_covered_skills),
@@ -164,6 +208,15 @@ class MLPredictor:
             'nb_job_technical': float(nb_job_technical),
             'nb_job_soft': float(nb_job_soft),
         }
+        
+        # Ajouter les features textuelles
+        result.update(resume_feats)
+        result.update(job_feats)
+
+        # Debug optionnel (tu peux garder ou enlever)
+        logger.debug(f"📊 Features calculées: coverage={coverage:.1f}%, {len(result)} features")
+
+        return result
 
     def predict(self, features: Dict[str, float]) -> Dict:
         if not self._loaded:
