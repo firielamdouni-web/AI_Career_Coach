@@ -1,55 +1,11 @@
 {
-    "model_name": "XGBoost",
-    "model_type": "classification",
-    "features": [
-        "coverage",
-        "quality",
-        "nb_covered_skills",
-        "nb_missing_skills",
-        "skills_ratio",
-        "similarity_mean",
-        "similarity_max",
-        "similarity_std",
-        "top3_similarity_avg",
-        "tfidf_similarity",
-        "embedding_similarity",
-        "nb_resume_technical",
-        "nb_resume_soft",
-        "nb_job_technical",
-        "nb_job_soft"
-    ],
-    "class_mapping": {
-        "0.0": 0,
-        "0.5": 1,
-        "1.0": 2
-    },
-    "reverse_mapping": {
-        "0": 0.0,
-        "1": 0.5,
-        "2": 1.0
-    },
-    "classes_encoded": [
-        0,
-        1,
-        2
-    ],
-    "classes_original": [
-        0.0,
-        0.5,
-        1.0
-    ],
-    "class_names": [
-        "No Fit",
-        "Partial Fit",
-        "Perfect Fit"
-    ],
-    "train_samples": 3619,
-    "test_samples": 905,
-    "dataset_version": "clean (30% incoh\u00e9rences supprim\u00e9es)",
-    "test_accuracy": 0.7038674033149172,
-    "test_precision": 0.6937853267787111,
-    "test_recall": 0.7038674033149172,
-    "test_f1": 0.693833564587054,
-    "scaler_used": true,
-    "notes": "Mod\u00e8le entra\u00een\u00e9 sur dataset nettoy\u00e9 (4,524 samples). Classes encod\u00e9es : 0.0\u21920, 0.5\u21921, 1.0\u21922."
+  "model_name": "job-matcher-classifier",
+  "version": 2,
+  "mlflow_run_id": "2bffeeb943dc40d098d224bf19532229",
+  "accuracy": 0.7049723756906078,
+  "exported_at": "2026-02-19T17:58:38.095860",
+  "model_uri": "runs:/2bffeeb943dc40d098d224bf19532229/model",
+  "stage": "Production",
+  "model_type": "XGBoost",
+  "features_count": 15
 }

@@ -18,7 +18,7 @@ sentence-transformers>=2.7.0
 transformers>=4.36.0
 torch>=2.0.0
 
-# ✅ AJOUTER SPACY (pour skills_extractor.py)
+# pour skills_extractor.py
 spacy>=3.7.0
 
 # Vector Search
@@ -33,3 +33,7 @@ mlflow>=2.8.0
 
 # LLM
 groq>=0.4.1
+
+# Testing
+pytest>=9.0.0
+pytest-cov>=7.0.0
