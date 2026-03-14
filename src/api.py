@@ -731,6 +731,35 @@ async def recommend_jobs(
         # ── 5. Scorer chaque job ──────────────────────────────────────────
         detailed_results = []
 
+        cv_ml_text = " ".join(cv_skills)
+        known_tech_set = set(s.lower() for s in matcher.skills_db.get('technical_skills', []))
+        known_soft_set = set(s.lower() for s in matcher.skills_db.get('soft_skills', []))
+
+        # 🔥 L'ASTUCE ULTIME V2 : Bloque les calculs des strings ET des listes
+        original_encode = matcher.model.encode
+        hf_cache = {}
+        import numpy as np
+        
+        def fast_cached_encode(sentences, *args, **kwargs):
+            if isinstance(sentences, str):
+                if sentences not in hf_cache:
+                    # On le calcule une seule fois et on le stocke
+                    hf_cache[sentences] = original_encode([sentences], *args, **kwargs)[0]
+                return hf_cache[sentences]
+                
+            elif isinstance(sentences, list):
+                # On filtre ce qu'on ne connaît pas encore
+                missing = [s for s in sentences if s not in hf_cache]
+                if missing:
+                    new_embs = original_encode(missing, *args, **kwargs)
+                    for s, emb in zip(missing, new_embs):
+                        hf_cache[s] = emb
+                # On recompose la réponse à partir de la mémoire pour aller à la vitesse de l'éclair
+                return np.array([hf_cache[s] for s in sentences])
+                
+            return original_encode(sentences, *args, **kwargs)
+            
+        matcher.model.encode = fast_cached_encode # Pose du piège
 
         for job in candidate_jobs:
             try:
@@ -771,12 +800,7 @@ async def recommend_jobs(
                     job_tech += [s for s in all_job_skills if s not in categorized]
 
 
-                    # ⚡ TRONCATURE : Empêche les lenteurs extrêmes du modèle Deep Learning  
-                    job_desc_trunc = job.get('description', '')[:1000]
-                    job_raw = " ".join([
-                        job.get('title', ''), job_desc_trunc,
-                        " ".join(job.get('requirements', [])),
-                    ]).strip()
+                    job_raw = f"{job.get('title', '')} {' '.join(all_job_skills)}".strip()
 
 
                     ml_feat = ml_predictor.compute_features(
@@ -785,14 +809,19 @@ async def recommend_jobs(
                         job_technical_skills=job_tech,
                         job_soft_skills=job_soft,
                         skills_details=detailed_score['skills_details'],
-                        cv_raw_text=cv_text[:1500],    # ← Troncature CV obligatoire !
-                        job_raw_text=job_raw,
-                        sentence_model=matcher.model
+                        cv_raw_text=cv_ml_text,        
+                        job_raw_text=job_raw,          
+                        sentence_model=matcher.model # ← Le ML utilisera notre version ultra-rapide !
                     )
-                    ml_result = ml_predictor.predict(ml_feat)
+                    ml_raw_res = ml_predictor.predict(ml_feat)
+                    ml_result.update({
+                        'ml_available': ml_raw_res.get('ml_available', False),
+                        'ml_label': ml_raw_res.get('ml_label', 'N/A'),
+                        'ml_score': ml_raw_res.get('ml_score'),
+                        'ml_probabilities': ml_raw_res.get('ml_probabilities')
+                    })
                 except Exception as e:
-                    logger.warning(f"ML error: {e}")
-                    pass   # ← TRÈS IMPORTANT
+                    pass
 
 
             detailed_results.append({
@@ -820,6 +849,8 @@ async def recommend_jobs(
                 'ml_available': ml_result.get('ml_available', False),
             })
 
+        # 🧹 Fin de boucle : On restaure le vrai modèle pour éviter les bugs futurs
+        matcher.model.encode = original_encode
 
         # ── 6. Trier + filtrer ───────────────────────────────────────────
         detailed_results.sort(key=lambda x: x['score'], reverse=True)
