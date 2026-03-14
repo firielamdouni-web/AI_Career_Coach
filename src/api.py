@@ -443,6 +443,21 @@ async def extract_skills(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="CV vide ou illisible")
         extractor = get_skills_extractor()
         skills_result = extractor.extract_from_cv(cv_text)
+        
+        # 🔥 FIX 1 : Boost de récupération des skills du CV
+        known_tech = extractor.skills_database.get('technical_skills', [])
+        known_soft = extractor.skills_database.get('soft_skills', [])
+        cv_text_lower = cv_text.lower()
+        techs = skills_result['technical_skills']
+        softs = skills_result['soft_skills']
+        
+        for k in known_tech:
+            if len(k) > 2 and k.lower() in cv_text_lower and k not in techs:
+                techs.append(k)
+        for k in known_soft:
+            if len(k) > 2 and k.lower() in cv_text_lower and k not in softs:
+                softs.append(k)
+                
         return {
             "technical_skills": skills_result['technical_skills'],
             "soft_skills": skills_result['soft_skills'],
@@ -507,8 +522,21 @@ async def recommend_jobs(
         skills_result = extractor.extract_from_cv(cv_text)
         technical_skills = skills_result['technical_skills']
         soft_skills = skills_result['soft_skills']
-        cv_skills = technical_skills + soft_skills
-
+        
+        # 🔥 FIX 2 : Boost synchronisé pour la recommandation
+        known_tech = extractor.skills_database.get('technical_skills', [])
+        known_soft = extractor.skills_database.get('soft_skills', [])
+        cv_text_lower = cv_text.lower()
+        
+        for k in known_tech:
+            if len(k) > 2 and k.lower() in cv_text_lower and k not in technical_skills:
+                technical_skills.append(k)
+        for k in known_soft:
+            if len(k) > 2 and k.lower() in cv_text_lower and k not in soft_skills:
+                soft_skills.append(k)
+                
+        cv_skills = list(set(technical_skills + soft_skills))
+        
         if not cv_skills:
             raise HTTPException(status_code=400, detail="Aucune compétence détectée")
 
@@ -565,6 +593,27 @@ async def recommend_jobs(
             f"({local_count} locaux + {scraped_count} scrapés)"
         )
 
+        # 🔥 FIX 3 : Enrichissement Extrême des Offres
+        all_known_skills = known_tech + known_soft
+
+        for job in candidate_jobs:
+            reqs = job.get('requirements', [])
+            # On combine le titre et la description pour fouiller partout
+            job_text = f"{job.get('title', '')} {job.get('description', '')}".lower()
+            
+            extracted = []
+            # On cherche chaque skill directement dans le texte complet
+            for s in all_known_skills:
+                if len(s) > 2 and s.lower() in job_text and s not in extracted:
+                    extracted.append(s)
+            
+            # On fusionne sans doublons (limité à 25 pour ne pas saturer XGBoost)
+            job['requirements'] = list(set(reqs + extracted))[:25]
+            
+            # Forcer le cache du JobMatcher
+            if hasattr(matcher, '_job_skills_cache'):
+                matcher._job_skills_cache[str(job.get('job_id'))] = job['requirements']
+
         # Pré-charger l'IA avec tous les mots d'un coup (Batch Encoding)
         all_unique_skills = set()
         for j in candidate_jobs:
@@ -587,35 +636,40 @@ async def recommend_jobs(
                 logger.warning(f"Score error on {job.get('job_id')}: {e}")
                 continue
 
-            # Skills matchées
+            # 🔥 FIX 4 : Calcul Sécurisé des Compétences (Court-circuit du Matcher)
+            all_job_skills = job.get('requirements', [])
+            cv_skills_lower = {s.lower(): s for s in cv_skills}
+            
             matching_skills = []
-            matched_job_skills = set()
-            for match in detailed_score['skills_details']['top_matches']:
-                s = match['cv_skill']
-                if s not in matching_skills:
-                    matching_skills.append(s)
-                matched_job_skills.add(match['job_skill'])
-
-            # Skills manquantes
-            all_job_skills = matcher.extract_job_skills(job)
-            missing_skills = [s for s in all_job_skills if s not in matched_job_skills]
+            missing_skills = []
+            
+            for sk in all_job_skills:
+                if sk.lower() in cv_skills_lower:
+                    matching_skills.append(cv_skills_lower[sk.lower()])
+                else:
+                    missing_skills.append(sk)
+            
+            # Nettoyage doublons
+            matching_skills = list(set(matching_skills))
+            missing_skills = list(set(missing_skills))
 
             # ML
             ml_result = {'ml_available': False, 'ml_label': 'N/A',
                          'ml_score': None, 'ml_probabilities': None}
             if ml_predictor.is_loaded:
                 try:
-                    known_tech = set(s.lower() for s in matcher.skills_db.get('technical_skills', []))
-                    known_soft = set(s.lower() for s in matcher.skills_db.get('soft_skills', []))
-                    job_tech = [s for s in all_job_skills if s.lower() in known_tech]
-                    job_soft = [s for s in all_job_skills if s.lower() in known_soft]
+                    known_tech_set = set(s.lower() for s in matcher.skills_db.get('technical_skills', []))
+                    known_soft_set = set(s.lower() for s in matcher.skills_db.get('soft_skills', []))
+                    job_tech = [s for s in all_job_skills if s.lower() in known_tech_set]
+                    job_soft = [s for s in all_job_skills if s.lower() in known_soft_set]
                     categorized = set(job_tech + job_soft)
                     job_tech += [s for s in all_job_skills if s not in categorized]
 
+                    # ⚡ TRONCATURE : Empêche les lenteurs extrêmes du modèle Deep Learning  
+                    job_desc_trunc = job.get('description', '')[:1000]
                     job_raw = " ".join([
-                        job.get('title', ''), job.get('description', ''),
+                        job.get('title', ''), job_desc_trunc,
                         " ".join(job.get('requirements', [])),
-                        " ".join(job.get('nice_to_have', []))
                     ]).strip()
 
                     ml_feat = ml_predictor.compute_features(
@@ -624,14 +678,14 @@ async def recommend_jobs(
                         job_technical_skills=job_tech,
                         job_soft_skills=job_soft,
                         skills_details=detailed_score['skills_details'],
-                        cv_raw_text=cv_text,    
+                        cv_raw_text=cv_text[:1500],    # ← Troncature CV obligatoire !
                         job_raw_text=job_raw,
                         sentence_model=matcher.model
                     )
                     ml_result = ml_predictor.predict(ml_feat)
                 except Exception as e:
                     logger.warning(f"ML error: {e}")
-                    pass   # ← TRÈS IMPORTANT : il manquait cette ligne !
+                    pass   # ← TRÈS IMPORTANT
 
             detailed_results.append({
                 'job_id': job['job_id'],
