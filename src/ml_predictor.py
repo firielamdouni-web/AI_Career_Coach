@@ -5,12 +5,12 @@ Charge le modèle depuis MLflow et calcule les features à la volée
 
 import joblib
 import numpy as np
+import re 
 import logging
 from pathlib import Path
 from typing import List, Dict, Optional
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,6 @@ CLASS_LABELS = {0: 'No Fit', 1: 'Partial Fit', 2: 'Perfect Fit'}
 CLASS_SCORES = {0: 0.0, 1: 0.5, 2: 1.0}
 
 def _compute_text_features(text: str, prefix: str) -> Dict:
-    """Calcule les features textuelles pour un texte donné"""
     if not text:
         return {
             f'{prefix}_text_length': 0,
@@ -51,14 +50,14 @@ def _compute_text_features(text: str, prefix: str) -> Dict:
         f'{prefix}_text_sentence_count':   len(re.findall(r'[.!?]+', text)),
         f'{prefix}_text_capital_ratio':    sum(1 for c in text if c.isupper()) / len(text) if text else 0.0,
     }
-    
+
+
 class MLPredictor:
 
     def __init__(self):
         self.model = None
         self.scaler = None
         self._loaded = False
-        self._text_emb_cache = {}  # 🔥 GARDE ton cache d'optimisation
         self._load_model()
 
     def _load_model(self):
@@ -93,7 +92,7 @@ class MLPredictor:
         job_raw_text: str,
         sentence_model
     ) -> Dict[str, float]:
-        
+
         cv_all_skills  = cv_technical_skills + cv_soft_skills
         job_all_skills = job_technical_skills + job_soft_skills
 
@@ -155,7 +154,7 @@ class MLPredictor:
 
         # ── 3. TF-IDF ─────────────────────────────────────────────────────────
         try:
-            tfidf = TfidfVectorizer(max_features=500, stop_words='english')
+            tfidf        = TfidfVectorizer(max_features=500, stop_words='english')
             tfidf.fit([cv_raw_text, job_raw_text])
             tfidf_matrix = tfidf.transform([cv_raw_text, job_raw_text])
             tfidf_similarity = float(
@@ -164,57 +163,50 @@ class MLPredictor:
         except Exception:
             tfidf_similarity = 0.0
 
-        # ── 4. Embedding similarity sur TEXTE COMPLET (avec cache) ────────────
+        # ── 4. Embedding ──────────────────────────────────────────────────────
         try:
-            if cv_raw_text not in self._text_emb_cache:
-                self._text_emb_cache[cv_raw_text] = sentence_model.encode(cv_raw_text, show_progress_bar=False)
-            if job_raw_text not in self._text_emb_cache:
-                self._text_emb_cache[job_raw_text] = sentence_model.encode(job_raw_text, show_progress_bar=False)
-
-            cv_emb = self._text_emb_cache[cv_raw_text]
-            job_emb = self._text_emb_cache[job_raw_text]
-
+            embeddings = sentence_model.encode(
+                [cv_raw_text, job_raw_text], show_progress_bar=False
+            )
             embedding_similarity = float(
-                cosine_similarity([cv_emb], [job_emb])[0][0]
+                cosine_similarity([embeddings[0]], [embeddings[1]])[0][0]
             )
         except Exception:
             embedding_similarity = 0.0
 
-        # ── 5. Features Contexte ─────────────────────────────────────────────
+        # ── 5. Contexte ───────────────────────────────────────────────────────
         nb_resume_technical = len(cv_technical_skills)
-        nb_resume_soft = len(cv_soft_skills)
-        nb_job_technical = len(job_technical_skills)   # ✅ CORRECTION
-        nb_job_soft = len(job_soft_skills)              # ✅ CORRECTION
+        nb_resume_soft      = len(cv_soft_skills)
+        nb_job_technical    = len(job_technical_skills)
+        nb_job_soft         = len(job_soft_skills)
 
-        # ── 6. Features textuelles (AJOUTÉ de ton binôme) ────────────────────
-        resume_feats = _compute_text_features(cv_raw_text, 'resume')
-        job_feats = _compute_text_features(job_raw_text, 'job_description')
+        # ── 6. Features textuelles ────────────────────────────────────────────
+        resume_feats = _compute_text_features(cv_raw_text,  'resume')
+        job_feats    = _compute_text_features(job_raw_text, 'job_description')
 
-        # ── 7. Assembler toutes les features ──────────────────────────────────
+        # ── 7. Assembler les 27 features ──────────────────────────────────────
         result = {
-            'coverage': coverage,
-            'quality': quality,
-            'nb_covered_skills': float(nb_covered_skills),
-            'nb_missing_skills': float(nb_missing_skills),
-            'skills_ratio': skills_ratio,
-            'similarity_mean': similarity_mean,
-            'similarity_max': similarity_max,
-            'similarity_std': similarity_std,
-            'top3_similarity_avg': top3_similarity_avg,
-            'tfidf_similarity': tfidf_similarity,
+            'coverage':             coverage,
+            'quality':              quality,
+            'nb_covered_skills':    float(nb_covered_skills),
+            'nb_missing_skills':    float(nb_missing_skills),
+            'skills_ratio':         skills_ratio,
+            'similarity_mean':      similarity_mean,
+            'similarity_max':       similarity_max,
+            'similarity_std':       similarity_std,
+            'top3_similarity_avg':  top3_similarity_avg,
+            'tfidf_similarity':     tfidf_similarity,
             'embedding_similarity': embedding_similarity,
-            'nb_resume_technical': float(nb_resume_technical),
-            'nb_resume_soft': float(nb_resume_soft),
-            'nb_job_technical': float(nb_job_technical),
-            'nb_job_soft': float(nb_job_soft),
+            'nb_resume_technical':  float(nb_resume_technical),
+            'nb_resume_soft':       float(nb_resume_soft),
+            'nb_job_technical':     float(nb_job_technical),
+            'nb_job_soft':          float(nb_job_soft),
         }
-        
-        # Ajouter les features textuelles
         result.update(resume_feats)
         result.update(job_feats)
 
-        # Debug optionnel (tu peux garder ou enlever)
-        logger.debug(f"📊 Features calculées: coverage={coverage:.1f}%, {len(result)} features")
+        # Debug temporaire
+        logger.warning(f"🔍 DEBUG : coverage={coverage:.1f} | quality={quality:.1f} | sim_mean={similarity_mean:.1f} | sim_max={similarity_max:.1f}")
 
         return result
 
