@@ -6,6 +6,7 @@ Interface unique : offres locales (JSON) + offres réelles (JSearch)
 import streamlit as st
 import requests
 import os
+from pathlib import Path
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
@@ -16,109 +17,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-st.markdown("""
-<style>
-/* 1. Fond de page bleu ciel avec motif (Dot Grid stylisé) */
-.stApp {
-    background-color: #e0f2fe; /* Bleu ciel très clair */
-    background-image: radial-gradient(#bae6fd 2px, transparent 2px);
-    background-size: 30px 30px;
-}
+# Fonction pour charger le CSS externe
+def load_css():
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    css_path = os.path.join(base_dir, "pages", "styles.css")
+    
+    if os.path.exists(css_path):
+        with open(css_path, "r", encoding="utf-8") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    else:
+        st.warning(f"⚠️ Fichier CSS introuvable : {css_path}")
 
-/* 2. Titre principal chargé, animé et texturé */
-.main-header { 
-    font-size: 3.8rem; 
-    font-weight: 900; 
-    text-align: center; 
-    background: linear-gradient(270deg, #1e3a8a, #3b82f6, #8b5cf6, #06b6d4); 
-    background-size: 300% 300%;
-    -webkit-background-clip: text; 
-    -webkit-text-fill-color: transparent; 
-    margin-bottom: 0.5rem; 
-    text-shadow: 3px 3px 6px rgba(0,0,0,0.15); /* Ombre douce 3D */
-    animation: gradient-shift 6s ease infinite; /* Animation du fond fluide */
-}
-
-/* Animation pour le dégradé du titre */
-@keyframes gradient-shift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-.sub-header { 
-    font-size: 1.3rem; 
-    text-align: center; 
-    color: #334155; 
-    margin-bottom: 2.5rem; 
-    font-weight: 700; 
-    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-/* 3. Boutons "Bombés" (Effet Neumorphisme / 3D web moderne) */
-div.stButton > button:first-child { 
-    border-radius: 30px; 
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background: linear-gradient(145deg, #ffffff, #e6f0fa); /* Dégradé effet bombé */
-    box-shadow: 5px 5px 10px rgba(0,0,0,0.1), -5px -5px 10px rgba(255,255,255,0.9); 
-    color: #1e3a8a;
-    font-weight: 800; 
-    font-size: 1.05rem;
-    transition: all 0.2s ease; 
-}
-
-/* Effet Hover (Survol) : le bouton se soulève */
-div.stButton > button:first-child:hover { 
-    transform: translateY(-3px); 
-    box-shadow: 8px 8px 15px rgba(0,0,0,0.15), -8px -8px 15px rgba(255,255,255,1); 
-    background: linear-gradient(145deg, #f0f7ff, #ffffff);
-}
-
-/* Effet Click : le bouton s'enfonce */
-div.stButton > button:first-child:active { 
-    transform: translateY(1px); 
-    box-shadow: inset 5px 5px 10px rgba(0,0,0,0.1), inset -5px -5px 10px rgba(255,255,255,0.8); 
-}
-
-/* Boutons spécifiquement Primaire (Bouton d'Analyse) avec un style bleu percutant */
-div.stButton > button[kind="primary"] {
-    background: linear-gradient(145deg, #2563eb, #1d4ed8);
-    color: white;
-    border: none;
-    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.4), inset 0 2px 4px rgba(255,255,255,0.3);
-}
-
-div.stButton > button[kind="primary"]:hover {
-    background: linear-gradient(145deg, #3b82f6, #2563eb);
-    color: white;
-    box-shadow: 0 12px 25px rgba(37, 99, 235, 0.5), inset 0 2px 5px rgba(255,255,255,0.4);
-}
-
-div.stButton > button[kind="primary"]:active {
-    box-shadow: inset 4px 4px 10px rgba(0,0,0,0.3); 
-}
-
-
-/* Badges Sources redessinés */
-.source-local   { background:#e3f2fd; color:#1565c0; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #bbdefb; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
-.source-scraped { background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #c8e6c9; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
-
-/* Scores avec dégradés et ombres */
-.score-badge { display:inline-block; padding:.4rem 1.2rem; border-radius:25px; font-weight:800; font-size:1.2rem; box-shadow: 0 4px 8px rgba(0,0,0,0.15); border: 2px solid rgba(255,255,255,0.5); }
-.score-excellent { background: linear-gradient(135deg, #4CAF50, #81C784); color:white; }
-.score-good      { background: linear-gradient(135deg, #FFC107, #FFD54F); color:#333; }
-.score-medium    { background: linear-gradient(135deg, #FF9800, #FFB74D); color:white; }
-.score-low       { background: linear-gradient(135deg, #9E9E9E, #E0E0E0); color:white; }
-
-/* Accentuation et ombrage 3D des chiffres fixes (Metrics) */
-div[data-testid="stMetricValue"] { 
-    color: #1e3a8a; 
-    font-weight: 900; 
-    font-size: 2.6rem; 
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.15);
-}
-</style>
-""", unsafe_allow_html=True)
+# Charge le CSS au début du script
+load_css()
 
 
 # ============================================================================
@@ -133,7 +45,6 @@ def check_api_health():
     except Exception:
         return None
 
-
 @st.cache_data(ttl=60)
 def get_api_stats():
     try:
@@ -141,7 +52,6 @@ def get_api_stats():
         return r.json() if r.status_code == 200 else None
     except Exception:
         return None
-
 
 def extract_skills_via_api(cv_file):
     try:
@@ -162,11 +72,10 @@ def extract_skills_via_api(cv_file):
         st.error(f"❌ {e}")
         return None
 
-
 def recommend_jobs_via_api(cv_file, top_n=200, min_score=0.0, live_scrape=False):
     """Appelle l'API de recommandation"""
     try:
-        cv_file.seek(0)   # ← ajout seek(0) ici directement dans la fonction
+        cv_file.seek(0)
         r = requests.post(
             f"{API_BASE_URL}/api/v1/recommend-jobs",
             files={"file": (cv_file.name, cv_file, "application/pdf")},
@@ -176,7 +85,7 @@ def recommend_jobs_via_api(cv_file, top_n=200, min_score=0.0, live_scrape=False)
                 "use_faiss":   "false",
                 "live_scrape": "false"
             },
-            timeout=1200   # ← 10 minutes, largement suffisant
+            timeout=1200
         )
         if r.status_code == 200:
             return r.json()
@@ -204,11 +113,9 @@ def get_score_class(score):
     if score >= 40:   return "medium",    "🟠"
     return "low", "🔴"
 
-
 def display_job_card(job: dict, rank: int, cv_skills: list):
     score = job['score']
     score_class, emoji = get_score_class(score)
-    # ← CHANGEMENT : détecter aussi via is_scraped (pas seulement l'URL)
     is_real = bool(job.get('is_scraped') or job.get('url', '').startswith('http'))
 
     col_title, col_score = st.columns([4, 1])
@@ -219,19 +126,16 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
             '<span class="source-local">📁 Offre locale</span>'
         )
         st.markdown(
-            f"### {emoji} #{rank} — {job['title']}  "
-            f"<br>{source_html}",
+            f"### {emoji} #{rank} — {job['title']}  <br>{source_html}",
             unsafe_allow_html=True
         )
         st.markdown(f"**🏢 {job['company']}** &nbsp;|&nbsp; 📍 {job['location']}")
-        # ← NOUVEAU : afficher la source (hellowork, indeed, etc.)
         if job.get('source') and job['source'] not in ('local',):
             st.caption(f"🔗 Source : {job['source']}")
 
     with col_score:
         st.markdown(
-            f'<div class="score-badge score-{score_class}" '
-            f'style="margin-top:1.5rem;">{score:.1f}%</div>',
+            f'<div class="score-badge score-{score_class}" style="margin-top:1.5rem;">{score:.1f}%</div>',
             unsafe_allow_html=True
         )
 
@@ -253,8 +157,7 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
             colors = {'Perfect Fit':('🟢','#4CAF50'), 'Partial Fit':('🟡','#FFC107'), 'No Fit':('🔴','#f44336')}
             ml_e, ml_c = colors.get(ml_label, ('⚪','#9E9E9E'))
             st.markdown(
-                f"**🤖 Prédiction ML** : "
-                f"<span style='color:{ml_c};font-weight:bold;'>{ml_e} {ml_label}</span>",
+                f"**🤖 Prédiction ML** : <span style='color:{ml_c};font-weight:bold;'>{ml_e} {ml_label}</span>",
                 unsafe_allow_html=True
             )
             proba = job.get('ml_probabilities')
@@ -267,7 +170,6 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
         else:
             st.markdown("**🤖 Prédiction ML** : ⚪ N/A")
 
-    # ← NOUVEAU : description pour les offres réelles
     if is_real and job.get('description'):
         with st.expander("📄 Description du poste"):
             desc = job['description']
@@ -305,7 +207,6 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
             st.switch_page("pages/1_Interview_Simulator.py")
 
     with btn2:
-        # ← CHANGEMENT : condition améliorée (is_real inclut is_scraped sans URL)
         if job.get('url') and job['url'].startswith('http'):
             st.markdown(
                 f'<a href="{job["url"]}" target="_blank">'
@@ -341,7 +242,6 @@ def main():
         st.stop()
 
     st.sidebar.success("✅ API connectée")
-    st.sidebar.markdown(f"**Version** : {health.get('version','N/A')}")
 
     stats = get_api_stats()
     if stats:
@@ -374,12 +274,10 @@ def main():
 
     if uploaded_file:
         st.markdown(f"📎 **{uploaded_file.name}** ({uploaded_file.size/1024:.1f} KB)")
-
         col_analyze, col_reset = st.columns([1, 1])
 
         with col_analyze:
             if st.button("🚀 Analyser mon CV", type="primary", use_container_width=True):
-                # Étape 1 : extraction des compétences
                 with st.spinner("🔍 Extraction des compétences..."):
                     skills_result = extract_skills_via_api(uploaded_file)
 
@@ -389,16 +287,15 @@ def main():
                 st.success(f"✅ {skills_result['total_skills']} compétences détectées")
                 
                 uploaded_file.seek(0)
-                # Étape 2 : recommandations (avec scraping temps réel)
                 with st.spinner(
                     "🌐 Scraping JSearch en temps réel + calcul des scores... "
                     "(peut prendre 1-2 minutes)"
                 ):
                     reco_result = recommend_jobs_via_api(
                         uploaded_file,
-                        top_n=5000,        # ← CHANGEMENT : On demande jusqu'à 5000 offres
+                        top_n=5000, 
                         min_score=0.0,
-                        live_scrape=False  # ← le scheduler alimente la DB 2x/jour
+                        live_scrape=False
                     )
 
                 if not reco_result:
@@ -407,10 +304,7 @@ def main():
                 total = reco_result.get('total_jobs_analyzed', 0)
                 local = reco_result.get('local_jobs_count', 0)
                 scraped = reco_result.get('scraped_jobs_count', 0)
-                st.success(
-                    f"✅ {total} offres analysées "
-                    f"({local} locales + {scraped} réelles JSearch)"
-                )
+                st.success(f"✅ {total} offres analysées ({local} locales + {scraped} réelles)")
 
                 st.session_state.cv_processed    = True
                 st.session_state.cv_skills       = skills_result['technical_skills']
@@ -427,7 +321,6 @@ def main():
                     st.session_state[k] = defaults[k]
                 st.rerun()
 
-    # ── Instructions si aucun CV traité ──────────────────────────────────
     if not st.session_state.cv_processed:
         st.markdown("---")
         with st.container():
@@ -442,8 +335,6 @@ def main():
                - 🤖 Calcule un score de matching sémantique pour chaque offre
                - 📊 Prédit avec XGBoost si vous êtes **No Fit / Partial Fit / Perfect Fit**
                - 🎤 Simule un entretien personnalisé pour chaque poste
-
-            ⏱️ **Temps estimé** : 1–2 minutes (scraping inclus)
             """)
         st.stop()
 
@@ -474,7 +365,6 @@ def main():
     if not sel_exp:
         sel_exp = all_exp
 
-    # ── Appliquer filtres ─────────────────────────────────────────────────
     filtered = recommendations.copy()
     filtered = [j for j in filtered if j['score'] >= min_score]
 
@@ -536,51 +426,40 @@ def main():
 
     if not filtered:
         st.warning("Aucune offre ne correspond aux filtres sélectionnés.")
-        st.info("💡 Réduisez le score minimum ou changez les filtres.")
         st.stop()
 
-    # ← CHANGEMENT : Générer dynamiquement les options de filtrage de quantité
     display_options = [10, 50, 100, 200, 500, 1000, 2000, 3000, 5000]
     if len(filtered) not in display_options:
         display_options.append(len(filtered))
-    display_options = sorted(list(set(display_options))) # Trie et supprime les doublons
+    display_options = sorted(list(set(display_options)))
 
-    num_show = st.selectbox(
-        "Nombre d'offres à afficher",
-        options=display_options,
-        index=0
-    )
+    num_show = st.selectbox("Nombre d'offres à afficher", options=display_options, index=0)
 
     for i, job in enumerate(filtered[:num_show], 1):
         with st.container():
             display_job_card(job, i, cv_skills)
 
-#--------1
+    # ── Sections fixes du fond ────────────────────────────────────────────
     st.markdown("---")
     st.markdown("<h2 style='text-align: center;'>🚀 Comment ça marche ?</h2>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.info("### 📄 1. Uploadez\nDéposez votre CV au format PDF. Notre IA extrait instantanément vos compétences (Deep Learning & NLP).")
+        st.info("### 📄 1. Uploadez\nDéposez votre CV au format PDF. Notre IA extrait instantanément vos compétences.")
     with col2:
-        st.success("### 🎯 2. Matchez\nNotre algorithme analyse les offres du marché (locales et en temps réel) pour trouver le poste idéal.")
+        st.success("### 🎯 2. Matchez\nNotre algorithme analyse les offres du marché pour calculer votre score de compatibilité.")
     with col3:
-        st.warning("### 🎤 3. Simulez\nPréparez-vous avec notre simulateur d'entretien IA qui vous pose des questions ciblées selon le job.")
+        st.warning("### 🎤 3. Simulez\nPréparez-vous avec notre simulateur d'entretien IA ciblé selon le job.")
         
-#--------2
     st.markdown("---")
     st.markdown("### ❓ Foire Aux Questions (FAQ)")
-
     with st.expander("Mes données personnelles et mon CV sont-ils stockés ?"):
-        st.write("Non, dans la version gratuite, votre CV est analysé en mémoire puis détruit. Seules les compétences extraites sont utilisées pour le matching.")
-
+        st.write("Non, dans la version gratuite, votre CV est analysé en mémoire puis détruit.")
     with st.expander("D'où proviennent les offres d'emploi ?"):
-        st.write("Nous utilisons une base de données interne certifiée ainsi qu'une recherche en temps réel via l'API JSearch pour vous proposer les offres les plus récentes en France.")
-
+        st.write("Nous utilisons une base locale certifiée et l'API JSearch pour les offres en temps réel.")
     with st.expander("Comment est calculé le score de compatibilité CV–offre ?"):
-        st.write("Le score de compatibilité combine 80% Coverage (compétences couvertes) et 20% Quality (proximité sémantique CV–offre).")
+        st.write("Le score combine 80% Coverage (compétences couvertes) et 20% Quality (proximité sémantique CV–offre).")
 
-#--------3 
     st.markdown("---")
     st.markdown("""
     <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #4CAF50;">
@@ -590,33 +469,18 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
-#--------4
     st.markdown("---")
     st.markdown("""
-    <style>
-    .footer {
-        text-align: center;
-        color: #888;
-        font-size: 14px;
-        padding: 20px;
-    }
-    .footer a {
-        color: #4CAF50;
-        text-decoration: none;
-        margin: 0 10px;
-    }
-    </style>
     <div class="footer">
         <p>Développé par Robert UNG et Firiel Amdouni | © 2026 AI Career Coach</p>
         <p>
             <a href="https://www.linkedin.com/in/robert-ung-a754b2235/" target="_blank" rel="noopener noreferrer">📘 LinkedIn</a> | 
-            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/main" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
+            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/Robert" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
             <a href="#">✉️ Contactez-nous</a> | 
             <a href="#">Mentions Légales</a>
         </p>
     </div>
     """, unsafe_allow_html=True)
-
 
 if __name__ == "__main__":
     main()
