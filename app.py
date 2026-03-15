@@ -592,16 +592,6 @@ def main():
 
 #--------4
     st.markdown("---")
-    st.markdown("### 🌟 Ils ont trouvé leur emploi grâce à l'IA")
-
-    t1, t2 = st.columns(2)
-    with t1:
-        st.markdown("> *\"J'ai trouvé un poste de Data Scientist en 2 semaines. Les questions d'entretien générées par l'IA étaient exactement celles posées par le RH !\"*\n\n**— Sarah M.**")
-    with t2:
-        st.markdown("> *\"Le système a détecté des compétences sur mon CV que j'avais oublié de mettre en avant. Le matching est bluffant.\"*\n\n**— Thomas D., Full Stack Dev**")
-        
-#--------5
-    st.markdown("---")
     st.markdown("""
     <style>
     .footer {
