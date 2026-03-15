@@ -124,7 +124,23 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
-      
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: career_coach_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - pfe-network  # ← CORRIGÉ
+    depends_on:
+      - postgres     # ← CORRIGÉ
+    volumes:
+      - grafana_data:/var/lib/grafana
+
 networks:
   pfe-network:
     driver: bridge
@@ -133,4 +149,6 @@ volumes:
   postgres_data:
     driver: local
   mlflow_data:             
+    driver: local
+  grafana_data:
     driver: local
