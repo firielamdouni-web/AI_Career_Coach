@@ -2,7 +2,6 @@
 Tests unitaires - CVParser
 """
 import pytest
-from pathlib import Path
 from unittest.mock import patch, MagicMock
 from src.cv_parser import CVParser
 
@@ -24,7 +23,7 @@ class TestCVParser:
         """Test méthode non supportée"""
         fake_pdf = tmp_path / "fake.pdf"
         fake_pdf.write_bytes(b"fake pdf content")
-        
+
         parser = CVParser(method='invalid')
         with pytest.raises(ValueError, match="Méthode non supportée"):
             parser.parse(fake_pdf)
