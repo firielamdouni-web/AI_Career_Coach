@@ -694,26 +694,27 @@ async def recommend_jobs(
         )
 
 
-        # 🔥 FIX 3 : Enrichissement Extrême des Offres
+        # 🔥 FIX 3 : Enrichissement Extrême des Offres (OPTIMISÉ)
         all_known_skills = known_tech + known_soft
-
+        
+        # 1. On compile UNE SEULE GROSSE regex avant d'entrer dans la boucle des jobs
+        # On trie du plus long au plus court pour que "C++" soit identifié avant "C"
+        valid_skills = sorted([s.lower() for s in all_known_skills if len(s) > 2], key=len, reverse=True)
+        escaped_skills = [re.escape(s) for s in valid_skills]
+        global_regex_pattern = r'(?<![a-z0-9])(' + '|'.join(escaped_skills) + r')(?![a-z0-9])'
+        fast_regex = re.compile(global_regex_pattern)
 
         for job in candidate_jobs:
             reqs = job.get('requirements', [])
             job_text = f"{job.get('title', '')} {job.get('description', '')}".lower()
+            
+            # 2. On trouve TOUT en une fraction de seconde par job
+            extracted = list(set(fast_regex.findall(job_text)))
                                      
-            extracted = []
-            for s in all_known_skills:
-                if len(s) > 2 and s not in extracted:
-                    # Ajout des limites de mots exactes
-                    pattern = r'(?<![a-z0-9])' + re.escape(s.lower()) + r'(?![a-z0-9])'
-                    if re.search(pattern, job_text):
-                        extracted.append(s)
+            job['requirements'] = list(set([r.lower() for r in reqs] + extracted))[:25]
                                      
-                job['requirements'] = list(set(reqs + extracted))[:25]
-                                     
-                if hasattr(matcher, '_job_skills_cache'):
-                    matcher._job_skills_cache[str(job.get('job_id'))] = job['requirements']
+            if hasattr(matcher, '_job_skills_cache'):
+                matcher._job_skills_cache[str(job.get('job_id'))] = job['requirements']
 
 
         # Pré-charger l'IA avec tous les mots d'un coup (Batch Encoding)

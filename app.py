@@ -555,6 +555,78 @@ def main():
         with st.container():
             display_job_card(job, i, cv_skills)
 
+#--------1
+    st.markdown("---")
+    st.markdown("<h2 style='text-align: center;'>🚀 Comment ça marche ?</h2>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.info("### 📄 1. Uploadez\nDéposez votre CV au format PDF. Notre IA extrait instantanément vos compétences (Deep Learning & NLP).")
+    with col2:
+        st.success("### 🎯 2. Matchez\nNotre algorithme analyse les offres du marché (locales et en temps réel) pour trouver le poste idéal.")
+    with col3:
+        st.warning("### 🎤 3. Simulez\nPréparez-vous avec notre simulateur d'entretien IA qui vous pose des questions ciblées selon le job.")
+        
+#--------2
+    st.markdown("---")
+    st.markdown("### ❓ Foire Aux Questions (FAQ)")
+
+    with st.expander("Mes données personnelles et mon CV sont-ils stockés ?"):
+        st.write("Non, dans la version gratuite, votre CV est analysé en mémoire puis détruit. Seules les compétences extraites sont utilisées pour le matching.")
+
+    with st.expander("D'où proviennent les offres d'emploi ?"):
+        st.write("Nous utilisons une base de données interne certifiée ainsi qu'une recherche en temps réel via l'API JSearch pour vous proposer les offres les plus récentes en France.")
+
+    with st.expander("Comment fonctionne le score de matching (XGBoost) ?"):
+        st.write("Notre modèle de Machine Learning compare sémantiquement votre profil aux pré-requis du poste sur plus de 15 critères (technique, soft skills, sémantique).")
+
+#--------3 
+    st.markdown("---")
+    st.markdown("""
+    <div style="background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center; border: 2px solid #4CAF50;">
+        <h4>🌟 Passez à la vitesse supérieure avec AI Career Coach Premium !</h4>
+        <p>Générez des lettres de motivation sur-mesure, accédez au tracking de vos candidatures et débloquez les simulations d'entretiens illimitées.</p>
+        <button style="background-color: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Découvrir l'offre (Bientôt)</button>
+    </div>
+    """, unsafe_allow_html=True)
+
+#--------4
+    st.markdown("---")
+    st.markdown("### 🌟 Ils ont trouvé leur emploi grâce à l'IA")
+
+    t1, t2 = st.columns(2)
+    with t1:
+        st.markdown("> *\"J'ai trouvé un poste de Data Scientist en 2 semaines. Les questions d'entretien générées par l'IA étaient exactement celles posées par le RH !\"*\n\n**— Sarah M.**")
+    with t2:
+        st.markdown("> *\"Le système a détecté des compétences sur mon CV que j'avais oublié de mettre en avant. Le matching est bluffant.\"*\n\n**— Thomas D., Full Stack Dev**")
+        
+#--------5
+    st.markdown("---")
+    st.markdown("""
+    <style>
+    .footer {
+        text-align: center;
+        color: #888;
+        font-size: 14px;
+        padding: 20px;
+    }
+    .footer a {
+        color: #4CAF50;
+        text-decoration: none;
+        margin: 0 10px;
+    }
+    </style>
+    <div class="footer">
+        <p>Développé avec ❤️ pour notre Projet de Fin d'Études (PFE) | © 2026 AI Career Coach</p>
+        <p>
+            <a href="#">📘 LinkedIn</a> | 
+            <a href="#">🐙 GitHub</a> | 
+            <a href="#">✉️ Contactez-nous</a> | 
+            <a href="#">Mentions Légales</a>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()

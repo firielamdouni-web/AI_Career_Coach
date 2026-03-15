@@ -124,14 +124,14 @@ class JobMatcher:
     def extract_job_skills(self, job: Dict) -> List[str]:
         """
         Extraire skills du job avec le MÊME extracteur que le CV
-        → Cohérence garantie entre CV et Job (IDÉE BINÔME)
         """
-        # Construire le texte du job
+        # 🔥 SOLUTION 1 : Court-circuit pour bypasser la lenteur de SpaCy NLP !
+        # Si api.py a déjà calculé les requirements, on les utilise directement.
+        if job.get('requirements'):
+            return job['requirements']
+            
+        # Poursuivre avec l'ancienne logique s'il n'y a rien
         job_text = ""
-        
-        if 'requirements' in job and job['requirements']:
-            job_text += " ".join(job['requirements']) + " "
-        
         if 'nice_to_have' in job and job['nice_to_have']:
             job_text += " ".join(job['nice_to_have']) + " "
         
