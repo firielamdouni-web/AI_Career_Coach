@@ -1,5 +1,5 @@
 """
-🎯 AI Career Coach - Dashboard Streamlit
+🚀 AI Career Coach - Dashboard Streamlit
 Interface unique : offres locales (JSON) + offres réelles (JSearch)
 """
 
@@ -11,7 +11,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
 st.set_page_config(
     page_title="AI Career Coach",
-    page_icon="🎯",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -325,7 +325,7 @@ def display_job_card(job: dict, rank: int, cv_skills: list):
 # ============================================================================
 
 def main():
-    st.markdown('<div class="main-header"><span style="-webkit-text-fill-color: #7c3aed; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">🎯</span> AI Career Coach</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><span style="-webkit-text-fill-color: #7c3aed; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">🚀</span> AI Career Coach</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="sub-header">Matching intelligent CV ↔ Offres réelles (LinkedIn · Indeed · Glassdoor)</div>',
         unsafe_allow_html=True
@@ -346,7 +346,7 @@ def main():
     stats = get_api_stats()
     if stats:
         with st.sidebar.expander("📊 Statistiques"):
-            st.markdown(f"- Offres locales : **{stats['total_jobs']}**")
+            st.markdown(f"- Offres : **{stats['total_jobs']}**")
             st.markdown(f"- Remote : **{stats['remote_jobs']}**")
             st.markdown(f"- Compétences tech : **{stats['total_technical_skills']}**")
             st.markdown(f"- Soft skills : **{stats['total_soft_skills']}**")
@@ -577,8 +577,8 @@ def main():
     with st.expander("D'où proviennent les offres d'emploi ?"):
         st.write("Nous utilisons une base de données interne certifiée ainsi qu'une recherche en temps réel via l'API JSearch pour vous proposer les offres les plus récentes en France.")
 
-    with st.expander("Comment fonctionne le score de matching (XGBoost) ?"):
-        st.write("Notre modèle de Machine Learning compare sémantiquement votre profil aux pré-requis du poste sur plus de 15 critères (technique, soft skills, sémantique).")
+    with st.expander("Comment est calculé le score de compatibilité CV–offre ?"):
+        st.write("Le score de compatibilité combine 80% Coverage (compétences couvertes) et 20% Quality (proximité sémantique CV–offre).")
 
 #--------3 
     st.markdown("---")
@@ -607,10 +607,10 @@ def main():
     }
     </style>
     <div class="footer">
-        <p>Développé avec ❤️ pour notre Projet de Fin d'Études (PFE) | © 2026 AI Career Coach</p>
+        <p>Développé par Robert UNG et Firiel Amdouni | © 2026 AI Career Coach</p>
         <p>
-            <a href="#">📘 LinkedIn</a> | 
-            <a href="#">🐙 GitHub</a> | 
+            <a href="https://www.linkedin.com/in/robert-ung-a754b2235/" target="_blank" rel="noopener noreferrer">📘 LinkedIn</a> | 
+            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/Robert" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
             <a href="#">✉️ Contactez-nous</a> | 
             <a href="#">Mentions Légales</a>
         </p>

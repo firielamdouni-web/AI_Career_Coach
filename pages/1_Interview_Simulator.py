@@ -193,7 +193,7 @@ if not st.session_state.interview_started:
     
     cv_skills = st.session_state.cv_skills
     
-    st.success(f"✅ Compétences détectées : {len(cv_skills)}")
+    st.success(f"✅ Compétences techniques détectées : {len(cv_skills)}")
     with st.expander("🔍 Voir vos compétences"):
         st.markdown(", ".join(cv_skills[:20]))
     
@@ -571,14 +571,13 @@ st.sidebar.markdown("""
 
 1. **Sélectionnez un poste** pour lequel vous voulez vous entraîner
 2. **Répondez aux questions** une par une
-3. **Recevez un feedback immédiat** après chaque réponse
+3. **Recevez un feedback immédiat** pour chaque réponse
 4. **Analysez vos résultats** à la fin
 
 ### 💡 Conseils
 
 - **Structurez vos réponses** (STAR: Situation, Tâche, Action, Résultat)
 - **Donnez des exemples concrets** de projets
-- **Mentionnez des chiffres** (amélioration de X%, réduction de Y%)
 - **Soyez authentique**
 
 ### 🎯 Objectif
