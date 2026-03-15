@@ -522,7 +522,7 @@ def main():
         st.markdown(f"📁 **Offres locales** : {loc}")
 
     with col_skills:
-        st.subheader("🔧 Vos compétences détectées")
+        st.subheader("🔧 Vos compétences techniques détectées")
         for i, s in enumerate(cv_skills[:12], 1):
             st.markdown(f"{i}. {s}")
         if len(cv_skills) > 12:
@@ -610,7 +610,7 @@ def main():
         <p>Développé par Robert UNG et Firiel Amdouni | © 2026 AI Career Coach</p>
         <p>
             <a href="https://www.linkedin.com/in/robert-ung-a754b2235/" target="_blank" rel="noopener noreferrer">📘 LinkedIn</a> | 
-            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/Robert" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
+            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/main" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
             <a href="#">✉️ Contactez-nous</a> | 
             <a href="#">Mentions Légales</a>
         </p>
