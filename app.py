@@ -470,17 +470,33 @@ def main():
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("""
-    <div class="footer">
-        <p>Développé par Robert UNG et Firiel Amdouni | © 2026 AI Career Coach</p>
-        <p>
-            <a href="https://www.linkedin.com/in/robert-ung-a754b2235/" target="_blank" rel="noopener noreferrer">📘 LinkedIn</a> | 
-            <a href="https://github.com/Robert-ung/AI_Career_Coach/tree/Robert" target="_blank" rel="noopener noreferrer">🐙 GitHub</a> | 
-            <a href="#">✉️ Contactez-nous</a> | 
-            <a href="#">Mentions Légales</a>
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    
+    st.markdown(
+"""<div style="text-align: center; font-family: sans-serif; color: #555; padding: 20px 0; background-color: transparent;">
+<h4 style="margin-bottom: 20px; color: #333;">© 2026 AI Career Coach</h4>
+<p style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #555;">Développé par :</p>
+<div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 25px;">
+<div style="text-align: right;">
+<p style="font-weight: bold; color: #333; margin: 0 0 5px 0; font-size: 1.1em;">Firiel AMDOUNI</p>
+<p style="margin: 0; font-size: 0.9em;">
+<a href="https://www.linkedin.com/in/firiel-amdouni-02a0b9233/" target="_blank" style="color: #0077b5; text-decoration: none; margin-right: 5px;">📘 LinkedIn</a> | 
+<a href="https://github.com/firielamdouni-web/AI_Career_Coach/tree/main" target="_blank" style="color: #333; text-decoration: none; margin-left: 5px;">🐙 GitHub</a>
+</p>
+</div>
+<div style="height: 50px; border-left: 2px solid #ddd;"></div>
+<div style="text-align: left;">
+<p style="font-weight: bold; color: #333; margin: 0 0 5px 0; font-size: 1.1em;">Robert UNG</p>
+<p style="margin: 0; font-size: 0.9em;">
+<a href="https://www.linkedin.com/in/robert-ung-a754b2235/" target="_blank" style="color: #0077b5; text-decoration: none; margin-right: 5px;">📘 LinkedIn</a> | 
+<a href="https://github.com/Robert-ung/AI_Career_Coach/tree/Robert" target="_blank" style="color: #333; text-decoration: none; margin-left: 5px;">🐙 GitHub</a>
+</p>
+</div>
+</div>
+<div style="font-size: 0.85em; color: #888; border-top: 1px solid #eee; padding-top: 15px; width: 60%; margin: 0 auto;">
+<a href="#" style="color: #666; text-decoration: none; margin-right: 10px;">✉️ Contactez-nous</a> | 
+<a href="#" style="color: #666; text-decoration: none; margin-left: 10px;">Mentions Légales</a>
+</div>
+</div>""", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
