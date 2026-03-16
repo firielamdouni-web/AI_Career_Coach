@@ -44,7 +44,7 @@ class DatabaseManager:
                 self.cursor.execute("SELECT 1")
         except psycopg2.Error:
             self._connect()
-    
+
     def clean_old_scraped_jobs(self, days_to_keep: int = 30) -> int:
         """Supprime les offres scrapées plus vieilles que 'days_to_keep' jours pour éviter l'explosion de la DB."""
         try:

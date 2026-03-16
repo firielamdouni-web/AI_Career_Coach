@@ -4,24 +4,23 @@ Utilise SkillsExtractor et JobMatcher pour extraire les features PERTINENTES
 Version optimisée : 27 features (15 originales + 12 textuelles) + SUPPORT GPU
 """
 
+from src.job_matcher import JobMatcher
+from src.skills_extractor import SkillsExtractor
+import torch  # ✅ AJOUT
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+import logging
+from tqdm import tqdm
+import re
+import numpy as np
+import pandas as pd
 import sys
 from pathlib import Path
 
 # Ajouter le dossier parent au PATH
 sys.path.append(str(Path(__file__).parent.parent))
 
-import pandas as pd
-import numpy as np
-import re
-from tqdm import tqdm
-import logging
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from sentence_transformers import SentenceTransformer
-import torch  # ✅ AJOUT
-
-from src.skills_extractor import SkillsExtractor
-from src.job_matcher import JobMatcher
 
 # Configuration du logging
 logging.basicConfig(
@@ -139,6 +138,8 @@ job_tfidf = tfidf_vectorizer.transform(job_texts)
 print("✅ TF-IDF pré-calculés\n")
 
 # ===== FONCTION D'EXTRACTION DE FEATURES =====
+
+
 def compute_text_features(text):
     """
     Calculer les 6 features textuelles pour un texte donné
@@ -152,10 +153,10 @@ def compute_text_features(text):
             'text_sentence_count': 0,
             'text_capital_ratio': 0.0
         }
-    
+
     text = str(text)
     words = text.split()
-    
+
     return {
         'text_length':        len(text),
         'text_word_count':    len(words),
@@ -165,10 +166,11 @@ def compute_text_features(text):
         'text_capital_ratio':  sum(1 for c in text if c.isupper()) / len(text) if len(text) > 0 else 0.0
     }
 
+
 def compute_features_for_row(row, row_idx):
     """
     Calculer les 27 features ML pour une paire (CV, Job)
-    
+
     Features calculées :
     - Skills Matching (5) : coverage, quality, nb_covered_skills, nb_missing_skills, skills_ratio
     - Similarité (4)      : similarity_mean, similarity_max, similarity_std, top3_similarity_avg
@@ -177,27 +179,27 @@ def compute_features_for_row(row, row_idx):
     - Texte CV (6)        : resume_text_length, resume_text_word_count, ...
     - Texte Job (6)       : job_description_text_length, job_description_text_word_count, ...
     """
-    THRESHOLD_STRICT   = 65
+    THRESHOLD_STRICT = 65
     THRESHOLD_MODERATE = 40
-    
+
     try:
         # ===== 1. EXTRACTION DES SKILLS =====
         cv_result = skills_extractor.extract_from_cv(str(row['resume']))
         cv_technical = cv_result.get('technical_skills', [])
         cv_soft = cv_result.get('soft_skills', [])
         cv_skills_list = cv_technical + cv_soft
-        
+
         job_result = skills_extractor.extract_from_cv(str(row['job_description']))
         job_technical = job_result.get('technical_skills', [])
         job_soft = job_result.get('soft_skills', [])
         job_skills_list = job_technical + job_soft
-        
+
         # ===== 2. FEATURES DE CONTEXTE (4 features) =====
         nb_resume_technical = len(cv_technical)
         nb_resume_soft = len(cv_soft)
         nb_job_technical = len(job_technical)
         nb_job_soft = len(job_soft)
-        
+
         # ===== 3. FEATURES SÉMANTIQUES (pré-calculées) =====
         tfidf_sim = cosine_similarity(resume_tfidf[row_idx], job_tfidf[row_idx])[0][0]
         embedding_sim = cosine_similarity(
@@ -207,8 +209,8 @@ def compute_features_for_row(row, row_idx):
 
         # ===== 4. FEATURES TEXTUELLES (12 features) =====
         resume_text_feats = compute_text_features(row['resume'])
-        job_text_feats    = compute_text_features(row['job_description'])
-        
+        job_text_feats = compute_text_features(row['job_description'])
+
         # Préfixer les noms pour distinguer CV et Job
         resume_feats = {f'resume_{k}': v for k, v in resume_text_feats.items()}
         job_feats = {f'job_description_{k}': v for k, v in job_text_feats.items()}
@@ -237,14 +239,14 @@ def compute_features_for_row(row, row_idx):
                 # Texte Job (6)
                 **job_feats,
             }
-        
+
         # ===== 6. MATCHING SKILL PAR SKILL (seuils 65% / 40%) =====
-        cv_embs  = embedding_model.encode([s.lower() for s in cv_skills_list], show_progress_bar=False)
+        cv_embs = embedding_model.encode([s.lower() for s in cv_skills_list], show_progress_bar=False)
         job_embs = embedding_model.encode([s.lower() for s in job_skills_list], show_progress_bar=False)
 
         similarities = []
         nb_covered_skills = 0
-        nb_missing_count  = 0
+        nb_missing_count = 0
 
         for i, job_skill in enumerate(job_skills_list):
             best_sim = 0.0
@@ -263,23 +265,23 @@ def compute_features_for_row(row, row_idx):
             similarities.append(best_sim)
 
             if best_sim >= THRESHOLD_STRICT:   nb_covered_skills += 1
-            if best_sim <  THRESHOLD_MODERATE: nb_missing_count  += 1
+            if best_sim < THRESHOLD_MODERATE: nb_missing_count += 1
 
         sim_array = np.array(similarities)
-        n_job     = len(job_skills_list)
+        n_job = len(job_skills_list)
 
         # ===== 7. FEATURES SKILLS MATCHING (5 features) =====
-        coverage          = (nb_covered_skills / n_job) * 100
-        covered_sims      = [s for s in similarities if s >= THRESHOLD_STRICT]
-        quality           = float(np.mean(covered_sims)) if covered_sims else 0.0
+        coverage = (nb_covered_skills / n_job) * 100
+        covered_sims = [s for s in similarities if s >= THRESHOLD_STRICT]
+        quality = float(np.mean(covered_sims)) if covered_sims else 0.0
         nb_missing_skills = nb_missing_count
-        skills_ratio      = len(cv_skills_list) / max(n_job, 1)
+        skills_ratio = len(cv_skills_list) / max(n_job, 1)
 
         # ===== 8. FEATURES SIMILARITÉ (4 features) =====
-        similarity_mean     = float(sim_array.mean())
-        similarity_max      = float(sim_array.max())
-        similarity_std      = float(sim_array.std())
-        top3                = sorted(similarities, reverse=True)[:3]
+        similarity_mean = float(sim_array.mean())
+        similarity_max = float(sim_array.max())
+        similarity_std = float(sim_array.std())
+        top3 = sorted(similarities, reverse=True)[:3]
         top3_similarity_avg = float(np.mean(top3))
 
         # ===== 9. RETOUR DES 27 FEATURES =====
@@ -308,7 +310,7 @@ def compute_features_for_row(row, row_idx):
             # Texte Job (6)
             **job_feats,
         }
-    
+
     except Exception as e:
         logger.error(f"⚠️ Erreur ligne {row_idx} : {e}")
         # Retourner features par défaut
@@ -339,11 +341,11 @@ errors_count = 0
 
 for seq_idx, (_, row) in enumerate(tqdm(df.iterrows(), total=len(df), desc="📊 Traitement", unit="sample")):
     features = compute_features_for_row(row, seq_idx)
-    
+
     # Compter les erreurs
     if features['coverage'] == 0.0 and features['quality'] == 0.0:
         errors_count += 1
-    
+
     features_list.append(features)
 
 # ===== CRÉATION DU DATAFRAME FINAL =====

@@ -155,7 +155,7 @@ def run_daily_scrape():
 
         except Exception as e:
             logger.error(f"   ❌ Scraping échoué pour '{q['query']}': {e}")
-    
+
     try:
         cleanup_db = _get_fresh_db()
         cleanup_db.clean_old_scraped_jobs(days_to_keep=30)
@@ -176,7 +176,8 @@ def run_daily_scrape():
             logger.error(f"❌ Erreur de synchronisation API: {response.text}")
     except Exception as e:
         logger.error(f"❌ Impossible de contacter l'API pour la synchronisation: {e}")
-        
+
+
 def main():
     logger.info("🕐 Scheduler démarré — scraping 1x/jour (plan Free JSearch)")
     logger.info("📅 Horaire : 08:00")

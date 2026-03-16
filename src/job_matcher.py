@@ -31,12 +31,12 @@ class JobMatcher:
         """Initialize JobMatcher with sentence transformer model"""
         # ✅ Utiliser SkillsExtractor pour extraire les skills du JOB aussi (IDÉE BINÔME)
         self.skills_extractor = SkillsExtractor()
-        
+
         logger.info("Initialisation du JobMatcher...")
         self.model = SentenceTransformer('all-mpnet-base-v2')
         self._cv_embeddings_cache = {}   # ← TON CACHE (à GARDER)
         self._job_embeddings_cache = {}  # ← TON CACHE (à GARDER)
-        
+
         # Charger skills_reference.json
         skills_db_path = Path(__file__).parent.parent / \
             "data" / "skills_reference.json"
@@ -56,13 +56,13 @@ class JobMatcher:
 
         # Construire le mapping de variations
         self.variations_map = self._build_variations_map()
-        
+
         # 🔥 TON ASTUCE INTELLIGENTE : Créer le Super Regex en cache global
         self._all_known_skills = set()
         for canonical, variations in self.variations_map.items():
             self._all_known_skills.add(canonical)
             self._all_known_skills.update(variations)
-            
+
         sorted_skills = sorted(list(self._all_known_skills), key=len, reverse=True)
         escaped_skills = [re.escape(s) for s in sorted_skills if s.strip()]
         self._skills_regex = re.compile(r'\b(' + '|'.join(escaped_skills) + r')\b')
@@ -129,20 +129,20 @@ class JobMatcher:
         # Si api.py a déjà calculé les requirements, on les utilise directement.
         if job.get('requirements'):
             return job['requirements']
-            
+
         # Poursuivre avec l'ancienne logique s'il n'y a rien
         job_text = ""
         if 'nice_to_have' in job and job['nice_to_have']:
             job_text += " ".join(job['nice_to_have']) + " "
-        
+
         if 'description' in job and job['description']:
             job_text += job['description']
-        
+
         # ✅ Même logique que le CV → cohérence garantie
         result = self.skills_extractor.extract_from_cv(job_text)
-        
+
         job_skills = result['technical_skills'] + result['soft_skills']
-        
+
         logger.info(f"💼 Skills extraits du job : {len(job_skills)}")
         return job_skills
 

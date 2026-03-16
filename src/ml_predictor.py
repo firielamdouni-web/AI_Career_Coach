@@ -31,6 +31,7 @@ FEATURES = [
 CLASS_LABELS = {0: 'No Fit', 1: 'Partial Fit', 2: 'Perfect Fit'}
 CLASS_SCORES = {0: 0.0, 1: 0.5, 2: 1.0}
 
+
 def _compute_text_features(text: str, prefix: str) -> Dict:
     if not text:
         return {
@@ -93,23 +94,23 @@ class MLPredictor:
         sentence_model
     ) -> Dict[str, float]:
 
-        cv_all_skills  = cv_technical_skills + cv_soft_skills
+        cv_all_skills = cv_technical_skills + cv_soft_skills
         job_all_skills = job_technical_skills + job_soft_skills
 
         # ── 1. Skills Matching ────────────────────────────────────────────────
         # ✅ IDENTIQUE au dataset : seuils 65 / 40
-        THRESHOLD_STRICT   = 65
+        THRESHOLD_STRICT = 65
         THRESHOLD_MODERATE = 40
 
         # ── 2. ✅ FIX PRINCIPAL : recalculer les similarités SKILL PAR SKILL
         #        exactement comme dans compute_features_from_huggingface.py
         if len(cv_all_skills) > 0 and len(job_all_skills) > 0:
-            cv_embs  = sentence_model.encode([s.lower() for s in cv_all_skills],  show_progress_bar=False)
+            cv_embs = sentence_model.encode([s.lower() for s in cv_all_skills],  show_progress_bar=False)
             job_embs = sentence_model.encode([s.lower() for s in job_all_skills], show_progress_bar=False)
 
-            similarities      = []
+            similarities = []
             nb_covered_skills = 0
-            nb_missing_count  = 0
+            nb_missing_count = 0
 
             for i, job_skill in enumerate(job_all_skills):
                 best_sim = 0.0
@@ -122,28 +123,28 @@ class MLPredictor:
 
                 # Sinon similarité cosine * 100 (→ 0-100 comme dataset)
                 if best_sim < 100.0:
-                    sims     = cosine_similarity([job_embs[i]], cv_embs)[0] * 100
+                    sims = cosine_similarity([job_embs[i]], cv_embs)[0] * 100
                     best_sim = float(np.max(sims))
 
                 similarities.append(best_sim)
 
                 if best_sim >= THRESHOLD_STRICT:   nb_covered_skills += 1
-                if best_sim <  THRESHOLD_MODERATE: nb_missing_count  += 1
+                if best_sim < THRESHOLD_MODERATE: nb_missing_count += 1
 
             sim_array = np.array(similarities)
-            n_job     = len(job_all_skills)
+            n_job = len(job_all_skills)
 
             # ✅ IDENTIQUE au dataset
-            coverage          = (nb_covered_skills / n_job) * 100
-            covered_sims      = [s for s in similarities if s >= THRESHOLD_STRICT]
-            quality           = float(np.mean(covered_sims)) if covered_sims else 0.0
+            coverage = (nb_covered_skills / n_job) * 100
+            covered_sims = [s for s in similarities if s >= THRESHOLD_STRICT]
+            quality = float(np.mean(covered_sims)) if covered_sims else 0.0
             nb_missing_skills = nb_missing_count
-            skills_ratio      = len(cv_all_skills) / max(n_job, 1)
+            skills_ratio = len(cv_all_skills) / max(n_job, 1)
 
-            similarity_mean     = float(sim_array.mean())
-            similarity_max      = float(sim_array.max())
-            similarity_std      = float(sim_array.std())
-            top3                = sorted(similarities, reverse=True)[:3]
+            similarity_mean = float(sim_array.mean())
+            similarity_max = float(sim_array.max())
+            similarity_std = float(sim_array.std())
+            top3 = sorted(similarities, reverse=True)[:3]
             top3_similarity_avg = float(np.mean(top3))
 
         else:
@@ -154,7 +155,7 @@ class MLPredictor:
 
         # ── 3. TF-IDF ─────────────────────────────────────────────────────────
         try:
-            tfidf        = TfidfVectorizer(max_features=500, stop_words='english')
+            tfidf = TfidfVectorizer(max_features=500, stop_words='english')
             tfidf.fit([cv_raw_text, job_raw_text])
             tfidf_matrix = tfidf.transform([cv_raw_text, job_raw_text])
             tfidf_similarity = float(
@@ -176,13 +177,13 @@ class MLPredictor:
 
         # ── 5. Contexte ───────────────────────────────────────────────────────
         nb_resume_technical = len(cv_technical_skills)
-        nb_resume_soft      = len(cv_soft_skills)
-        nb_job_technical    = len(job_technical_skills)
-        nb_job_soft         = len(job_soft_skills)
+        nb_resume_soft = len(cv_soft_skills)
+        nb_job_technical = len(job_technical_skills)
+        nb_job_soft = len(job_soft_skills)
 
         # ── 6. Features textuelles ────────────────────────────────────────────
         resume_feats = _compute_text_features(cv_raw_text,  'resume')
-        job_feats    = _compute_text_features(job_raw_text, 'job_description')
+        job_feats = _compute_text_features(job_raw_text, 'job_description')
 
         # ── 7. Assembler les 27 features ──────────────────────────────────────
         result = {

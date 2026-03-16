@@ -32,6 +32,11 @@ def extractor():
         ext.nlp = mock_nlp
         ext.skills_database = MOCK_SKILLS_DB
         ext.model_name = "fr_core_news_sm"
+        ext.variations_to_canonical = {
+            "python": "Python", 
+            "machine learning": "Machine Learning", 
+            "sql": "SQL"
+        }
         return ext
 
 

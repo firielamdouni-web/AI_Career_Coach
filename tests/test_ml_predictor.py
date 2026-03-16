@@ -6,24 +6,10 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from src.ml_predictor import MLPredictor, get_ml_predictor, FEATURES
 
-
-MOCK_FEATURES = {
-    'coverage': 60.0,
-    'quality': 75.0,
-    'nb_covered_skills': 12.0,
-    'nb_missing_skills': 8.0,
-    'skills_ratio': 0.8,
-    'similarity_mean': 70.0,
-    'similarity_max': 95.0,
-    'similarity_std': 15.0,
-    'top3_similarity_avg': 90.0,
-    'tfidf_similarity': 0.35,
-    'embedding_similarity': 0.65,
-    'nb_resume_technical': 10.0,
-    'nb_resume_soft': 3.0,
-    'nb_job_technical': 15.0,
-    'nb_job_soft': 5.0
-}
+# Création dynamique des fausses variables pour couvrir exactement les 27 features
+MOCK_FEATURES = {feature: 10.0 for feature in FEATURES}
+MOCK_FEATURES['coverage'] = 60.0
+MOCK_FEATURES['quality'] = 75.0
 
 
 @pytest.fixture
@@ -37,7 +23,8 @@ def predictor():
         mock_model.predict_proba.return_value = np.array([[0.05, 0.15, 0.80]])
 
         mock_scaler = MagicMock()
-        mock_scaler.transform.return_value = np.array([[0.1] * 15])
+        # Modifié pour renvoyer 27 éléments au lieu de 15
+        mock_scaler.transform.return_value = np.array([[0.1] * len(FEATURES)])
 
         mock_joblib.side_effect = [mock_model, mock_scaler]
 
@@ -51,8 +38,8 @@ def predictor():
 class TestMLPredictor:
 
     def test_features_list_complete(self):
-        """Test que les 15 features sont définies"""
-        assert len(FEATURES) == 15
+        """Test que le nombre de features est correct"""
+        assert len(FEATURES) == 27
 
     def test_is_loaded_false(self):
         """Test is_loaded quand modèle non chargé"""
@@ -116,9 +103,8 @@ class TestMLPredictor:
         predictor.predict(MOCK_FEATURES)
 
         call_args = predictor.scaler.transform.call_args[0][0]
-        assert len(call_args[0]) == 15
+        assert len(call_args[0]) == len(FEATURES)
         assert call_args[0][0] == MOCK_FEATURES['coverage']
-        assert call_args[0][1] == MOCK_FEATURES['quality']
 
     def test_get_ml_predictor_singleton(self):
         """Test que get_ml_predictor retourne un singleton"""

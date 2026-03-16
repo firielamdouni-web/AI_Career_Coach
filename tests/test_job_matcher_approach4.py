@@ -52,8 +52,10 @@ def matcher():
         mock_model.encode.side_effect = mock_encode
         mock_st.return_value = mock_model
 
-        from src.job_matcher import JobMatcher
-        return JobMatcher()
+        # Mock SkillsExtractor
+        with patch('src.job_matcher.SkillsExtractor'):
+            from src.job_matcher import JobMatcher
+            return JobMatcher()
 
 
 class TestJobMatcherApproach4:

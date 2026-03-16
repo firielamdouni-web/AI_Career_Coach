@@ -47,6 +47,15 @@ def matcher():
         mock_st.return_value = mock_model
 
         m = JobMatcher.__new__(JobMatcher)
+        m.skills_extractor = MagicMock()
+
+        # --- MODIFICATION ICI ---
+        m.skills_extractor.extract_from_cv.return_value = {
+            "technical_skills": ["python", "machine learning"],
+            "soft_skills": []
+        }
+        # ------------------------
+
         m.model = mock_model
         m.skills_db = MOCK_SKILLS_DB
         m.variations_map = m._build_variations_map()

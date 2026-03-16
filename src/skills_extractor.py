@@ -17,8 +17,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
-
 class SkillsExtractor:
     """
     Extracteur de compétences techniques et soft skills
@@ -28,7 +26,6 @@ class SkillsExtractor:
     1. en_core_web_sm (anglais, pour développement local)
     2. fr_core_news_lg (français, pour production Docker)
     """
-
 
     def __init__(self, skills_db_path: Optional[str] = None):
         """
@@ -48,13 +45,11 @@ class SkillsExtractor:
         self.nlp = None
         self.model_name = None
 
-
         # Liste des modèles à essayer (ordre de priorité)
         models_to_try = [
             ("en_core_web_sm", "Anglais (développement local)"),
             ("fr_core_news_lg", "Français (production Docker)")
         ]
-
 
         for model_name, description in models_to_try:
             try:
@@ -68,7 +63,6 @@ class SkillsExtractor:
                     f"⚠️  Modèle {model_name} non trouvé, essai suivant...")
                 continue
 
-
         # Si aucun modèle n'a fonctionné
         if self.nlp is None:
             raise RuntimeError(
@@ -77,7 +71,6 @@ class SkillsExtractor:
                 "  • python -m spacy download fr_core_news_lg  (français)"
             )
 
-
         # ====================================================================
         # CHARGER LA BASE DE COMPÉTENCES
         # ====================================================================
@@ -85,19 +78,15 @@ class SkillsExtractor:
             skills_db_path = Path(__file__).parent.parent / \
                 "data" / "skills_reference.json"
 
-
         skills_db_path = Path(skills_db_path)
-
 
         if not skills_db_path.exists():
             raise FileNotFoundError(
                 f"❌ Fichier skills_reference.json non trouvé : {skills_db_path}\n"
                 "Assurez-vous que data/skills_reference.json existe.")
 
-
         with open(skills_db_path, 'r', encoding='utf-8') as f:
             self.skills_database = json.load(f)
-
 
         logger.info(
             f"✅ Base de compétences chargée depuis {skills_db_path.name}")
@@ -105,10 +94,9 @@ class SkillsExtractor:
             f"   • Compétences techniques : {len(self.skills_database['technical_skills'])}")
         logger.info(
             f"   • Soft skills : {len(self.skills_database['soft_skills'])}")
-       
+
         self.variations_to_canonical = self._build_variations_map()
         print(f"   • Variations : {len(self.variations_to_canonical)} mappings")
-
 
     def _build_variations_map(self) -> Dict[str, str]:
         """
@@ -116,14 +104,13 @@ class SkillsExtractor:
         Ex: {"ml" → "machine learning", "py" → "python"}
         """
         mapping = {}
-       
+
         if 'variations' in self.skills_database:
             for canonical, variations_list in self.skills_database['variations'].items():
                 for variation in variations_list:
                     mapping[variation.lower()] = canonical
-       
-        return mapping
 
+        return mapping
 
     def extract_skills_from_text(
         self,
@@ -145,10 +132,8 @@ class SkillsExtractor:
         text_lower = text.lower()
         found_skills = set()
 
-
         for skill in skills_list:
             skill_lower = skill.lower()
-
 
             # ================================================================
             # Pattern flexible pour gérer :
@@ -164,10 +149,8 @@ class SkillsExtractor:
                 # Skill simple → word boundary
                 pattern = r'\b' + re.escape(skill_lower) + r'\b'
 
-
             if re.search(pattern, text_lower):
                 found_skills.add(skill)
-
 
         for variation, canonical in self.variations_to_canonical.items():
             # Vérifier que le canonical est dans la liste demandée
@@ -177,14 +160,14 @@ class SkillsExtractor:
             )
             if not canonical_in_list:
                 continue
-           
+
             # Chercher la variation dans le texte
             if re.search(r'[^a-z0-9\s]', variation):
                 escaped = re.escape(variation)
                 pattern = r'(?:^|\s|[(\[{])' + escaped + r'(?:\s|$|[.,;:)\]}])'
             else:
                 pattern = r'\b' + re.escape(variation) + r'\b'
-           
+
             if re.search(pattern, text_lower):
                 # Ajouter le skill canonical (pas la variation)
                 canonical_skill = next(
@@ -193,9 +176,7 @@ class SkillsExtractor:
                 )
                 found_skills.add(canonical_skill)
 
-
         return sorted(found_skills)
-
 
     def extract_from_cv(self, cv_text: str) -> Dict:
         """
@@ -227,7 +208,6 @@ class SkillsExtractor:
             logger.warning(f"⚠️  Erreur traitement spaCy : {e}")
             spacy_entities = []
 
-
         # ====================================================================
         # EXTRAIRE COMPÉTENCES TECHNIQUES
         # ====================================================================
@@ -235,7 +215,6 @@ class SkillsExtractor:
             cv_text,
             self.skills_database['technical_skills']
         )
-
 
         # ====================================================================
         # EXTRAIRE SOFT SKILLS
@@ -245,12 +224,10 @@ class SkillsExtractor:
             self.skills_database['soft_skills']
         )
 
-
         logger.info(
             f"✅ Extraction terminée : {len(technical_skills)} tech skills, "
             f"{len(soft_skills)} soft skills"
         )
-
 
         return {
             "technical_skills": technical_skills,
@@ -259,7 +236,6 @@ class SkillsExtractor:
             "spacy_entities": spacy_entities,
             "model_used": self.model_name  # ✅ Nouveau : tracer le modèle utilisé
         }
-
 
     def extract_and_save(
         self,
@@ -282,10 +258,8 @@ class SkillsExtractor:
         """
         from datetime import datetime
 
-
         # Extraire les compétences
         results = self.extract_from_cv(cv_text)
-
 
         # ====================================================================
         # AJOUTER MÉTADONNÉES
@@ -295,23 +269,18 @@ class SkillsExtractor:
             "%Y-%m-%d %H:%M:%S")
         results["method"] = f"spaCy ({self.model_name}) + keyword matching"
 
-
         # ====================================================================
         # SAUVEGARDER EN JSON
         # ====================================================================
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=2, ensure_ascii=False)
 
-
         logger.info(f"✅ Résultats sauvegardés : {output_path}")
 
-
         return results
-
 
     def get_model_info(self) -> Dict[str, str]:
         """
@@ -324,9 +293,7 @@ class SkillsExtractor:
         if self.nlp is None:
             return {"error": "Aucun modèle chargé"}
 
-
         meta = self.nlp.meta
-
 
         return {
             "name": meta.get("name", "unknown"),
@@ -334,8 +301,6 @@ class SkillsExtractor:
             "language": meta.get("lang", "unknown"),
             "description": meta.get("description", "N/A")
         }
-
-
 
 
 # ============================================================================
@@ -373,18 +338,14 @@ def extract_skills_from_cv_file(
     # Charger le texte du CV
     cv_text_path = Path(cv_text_path)
 
-
     if not cv_text_path.exists():
         raise FileNotFoundError(f"Fichier CV non trouvé : {cv_text_path}")
-
 
     with open(cv_text_path, 'r', encoding='utf-8') as f:
         cv_text = f.read()
 
-
     # Créer l'extracteur
     extractor = SkillsExtractor(skills_db_path)
-
 
     # Extraire et sauvegarder (si path fourni)
     if output_path:
@@ -395,8 +356,6 @@ def extract_skills_from_cv_file(
         )
     else:
         return extractor.extract_from_cv(cv_text)
-
-
 
 
 def test_models_availability() -> Dict[str, bool]:
@@ -418,9 +377,7 @@ def test_models_availability() -> Dict[str, bool]:
         "fr_core_news_lg": "Français (large)"
     }
 
-
     availability = {}
-
 
     for model_name, description in models.items():
         try:
@@ -431,17 +388,12 @@ def test_models_availability() -> Dict[str, bool]:
             availability[model_name] = False
             logger.warning(f"❌ {model_name} ({description}) : NON DISPONIBLE")
 
-
     return availability
-
-
 
 
 # ============================================================================
 # POINT D'ENTRÉE POUR TESTS
 # ============================================================================
-
-
 if __name__ == "__main__":
     """
     Script de test pour vérifier le bon fonctionnement
@@ -450,12 +402,10 @@ if __name__ == "__main__":
     print("🧪 TEST DU MODULE SKILLS EXTRACTOR")
     print("=" * 60)
 
-
     # Test 1 : Vérifier disponibilité des modèles
     print("\n📊 Test 1 : Disponibilité des modèles spaCy")
     print("-" * 60)
     availability = test_models_availability()
-
 
     # Test 2 : Créer un extracteur
     print("\n📊 Test 2 : Initialisation de SkillsExtractor")
@@ -470,11 +420,9 @@ if __name__ == "__main__":
         print(f"❌ Erreur : {e}")
         exit(1)
 
-
     # Test 3 : Extraction sur texte de test
     print("\n📊 Test 3 : Extraction sur texte de test")
     print("-" * 60)
-
 
     test_cv_text = """
     Développeur Full Stack avec 5 ans d'expérience
@@ -494,9 +442,7 @@ if __name__ == "__main__":
     - Adaptability
     """
 
-
     results = extractor.extract_from_cv(test_cv_text)
-
 
     print(f"✅ Extraction réussie")
     print(f"   • Compétences techniques : {len(results['technical_skills'])}")
@@ -504,7 +450,6 @@ if __name__ == "__main__":
     print(f"\n📋 Compétences détectées :")
     print(f"   Technical : {', '.join(results['technical_skills'][:10])}")
     print(f"   Soft : {', '.join(results['soft_skills'][:5])}")
-
 
     print("\n" + "=" * 60)
     print("✅ TOUS LES TESTS PASSÉS")
