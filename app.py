@@ -471,11 +471,12 @@ def main():
 
     st.markdown("---")
     
+    # ── Signatures (Déplacé au début du footer) ──────────────────────────────
     st.markdown(
 """<div style="text-align: center; font-family: sans-serif; color: #555; padding: 20px 0; background-color: transparent;">
 <h4 style="margin-bottom: 20px; color: #333;">© 2026 AI Career Coach</h4>
 <p style="margin-bottom: 15px; font-weight: bold; font-size: 1.1em; color: #555;">Développé par :</p>
-<div style="display: flex; justify-content: center; align-items: center; gap: 40px; margin-bottom: 25px;">
+<div style="display: flex; justify-content: center; align-items: center; gap: 40px;">
 <div style="text-align: right;">
 <p style="font-weight: bold; color: #333; margin: 0 0 5px 0; font-size: 1.1em;">Firiel AMDOUNI</p>
 <p style="margin: 0; font-size: 0.9em;">
@@ -492,11 +493,41 @@ def main():
 </p>
 </div>
 </div>
-<div style="font-size: 0.85em; color: #888; border-top: 1px solid #eee; padding-top: 15px; width: 60%; margin: 0 auto;">
-<a href="#" style="color: #666; text-decoration: none; margin-right: 10px;">✉️ Contactez-nous</a> | 
-<a href="#" style="color: #666; text-decoration: none; margin-left: 10px;">Mentions Légales</a>
+</div>""", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # ── Section Contact et Mentions Légales ──────────────────────────────────
+    col_contact, col_legal = st.columns(2)
+    
+    with col_contact:
+        st.markdown("<h3 style='text-align: center; color: #333;'>✉️ Contactez-nous</h3>", unsafe_allow_html=True)
+        st.markdown(
+"""<div style="display: flex; justify-content: space-around; padding: 20px; background-color: #ffffff; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 10px rgba(0,0,0,0.05); height: 100%;">
+<div style="text-align: center;">
+<h5 style="color: #4CAF50; margin-bottom: 15px;">📧 Par Email</h5>
+<p style="margin: 0;"><strong>Firiel AMDOUNI</strong><br>
+<a href="mailto:firiel.amdouni@telecom-sudparis.eu" style="color: #0077b5; text-decoration: none; font-size: 0.9em;">firiel.amdouni@telecom-sudparis.eu</a></p>
+<p style="margin: 15px 0 0 0;"><strong>Robert UNG</strong><br>
+<a href="mailto:robert.ung@telecom-sudparis.eu" style="color: #0077b5; text-decoration: none; font-size: 0.9em;">robert.ung@telecom-sudparis.eu</a></p>
+</div>
+<div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
+<div style="text-align: center;">
+<h5 style="color: #4CAF50; margin-bottom: 15px;">📞 Par Téléphone</h5>
+<p style="margin: 5px 0; color: #999;"><em>Sur demande préalable<br>via LinkedIn</em></p>
+<p style="margin: 15px 0 0 0; font-size: 0.85em; color: #aaa;">Disponibilité :<br>Lundi - Vendredi<br>09:00 - 18:00</p>
 </div>
 </div>""", unsafe_allow_html=True)
+            
+    with col_legal:
+        st.markdown("<h3 style='text-align: center; color: #333;'>⚖️ Mentions Légales</h3>", unsafe_allow_html=True)
+        st.markdown(
+"""<div style="padding: 20px; background-color: #ffffff; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 2px 2px 10px rgba(0,0,0,0.05); text-align: justify; color: #555; font-size: 0.95em; height: 100%;">
+<strong>Projet de Fin d'Études (PFE) - 2026</strong><br><br>
+Ce site est un démonstrateur académique développé par Firiel AMDOUNI et Robert UNG, étudiants à <strong>Télécom SudParis</strong>.<br><br>
+<em>Confidentialité :</em> Aucune donnée personnelle n'est sauvegardée à des fins commerciales. Les CV envoyés ne sont traités qu'en mémoire vive et sont immédiatement détruits.
+</div>""", unsafe_allow_html=True)
+
 
 if __name__ == "__main__":
     main()
