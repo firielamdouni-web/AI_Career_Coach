@@ -427,7 +427,7 @@ Ces métriques sont indicatives et dépendent des ressources machine et de l'uti
 | API Health | http://localhost:8000/health | Statut de l'API |
 | Streamlit | http://localhost:8501 | Interface utilisateur |
 | MLflow UI | http://localhost:5000 | Tracking des modèles |
-| Grafana | http://localhost:3000 | Dashboards |
+| Grafana | http://localhost:3000/d/ad95td9/monitoring-ai-career-coach?orgId=1&from=now-6h&to=now&timezone=browser | Dashboards |
 | PostgreSQL | localhost:5432 | Base de données (psql / client DB) |
 
 ## CI/CD

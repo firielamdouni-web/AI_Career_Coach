@@ -1,7 +1,7 @@
 {
   "metadata": {
     "total_jobs": 25,
-    "generated_date": "2026-01-25 18:21:43",
+    "generated_date": "2026-03-18 18:20:04",
     "categories": [
       "ml_engineer",
       "data_scientist",
@@ -17,7 +17,7 @@
       "category": "ml_engineer",
       "title": "Junior ML Engineer",
       "company": "AI Startup Paris",
-      "location": "Toulouse, France",
+      "location": "Lyon, France",
       "type": "CDI",
       "experience": "0-2 ans",
       "salary": "35-45K€",
@@ -35,17 +35,17 @@
         "MLflow",
         "AWS ou GCP"
       ],
-      "posted_date": "2026-01-08",
+      "posted_date": "2026-02-22",
       "url": "https://example-jobs.com/1",
       "remote_ok": false,
-      "applicants": 99
+      "applicants": 108
     },
     {
       "job_id": "job_002",
       "category": "ml_engineer",
       "title": "ML Engineer - Computer Vision",
       "company": "VisionTech",
-      "location": "Paris (Hybrid)",
+      "location": "Lyon, France",
       "type": "CDI",
       "experience": "1-3 ans",
       "salary": "40-50K€",
@@ -63,17 +63,17 @@
         "CI/CD",
         "Cloud (AWS, Azure)"
       ],
-      "posted_date": "2025-12-30",
+      "posted_date": "2026-02-23",
       "url": "https://example-jobs.com/2",
-      "remote_ok": true,
-      "applicants": 72
+      "remote_ok": false,
+      "applicants": 135
     },
     {
       "job_id": "job_003",
       "category": "ml_engineer",
       "title": "NLP Engineer",
       "company": "TextAI",
-      "location": "Toulouse, France",
+      "location": "Remote France",
       "type": "CDI",
       "experience": "1-3 ans",
       "salary": "42-52K€",
@@ -91,10 +91,10 @@
         "Vector databases (Pinecone, Weaviate)",
         "Kubernetes"
       ],
-      "posted_date": "2026-01-13",
+      "posted_date": "2026-03-11",
       "url": "https://example-jobs.com/3",
       "remote_ok": false,
-      "applicants": 95
+      "applicants": 42
     },
     {
       "job_id": "job_004",
@@ -119,17 +119,17 @@
         "Monitoring (Prometheus)",
         "FastAPI"
       ],
-      "posted_date": "2026-01-06",
+      "posted_date": "2026-02-18",
       "url": "https://example-jobs.com/4",
-      "remote_ok": false,
-      "applicants": 99
+      "remote_ok": true,
+      "applicants": 146
     },
     {
       "job_id": "job_005",
       "category": "ml_engineer",
       "title": "Senior ML Engineer",
       "company": "BigTech France",
-      "location": "Remote France",
+      "location": "Paris (Hybrid)",
       "type": "CDI",
       "experience": "3-5 ans",
       "salary": "55-70K€",
@@ -147,10 +147,10 @@
         "Spark, Big Data",
         "Plusieurs projets ML en production"
       ],
-      "posted_date": "2026-01-04",
+      "posted_date": "2026-03-13",
       "url": "https://example-jobs.com/5",
       "remote_ok": false,
-      "applicants": 118
+      "applicants": 74
     },
     {
       "job_id": "job_006",
@@ -175,10 +175,10 @@
         "Time series analysis",
         "A/B testing"
       ],
-      "posted_date": "2026-01-22",
+      "posted_date": "2026-03-15",
       "url": "https://example-jobs.com/6",
       "remote_ok": true,
-      "applicants": 116
+      "applicants": 101
     },
     {
       "job_id": "job_007",
@@ -203,10 +203,10 @@
         "Système de recommandation",
         "Big Data (Spark)"
       ],
-      "posted_date": "2026-01-04",
+      "posted_date": "2026-03-08",
       "url": "https://example-jobs.com/7",
       "remote_ok": false,
-      "applicants": 25
+      "applicants": 26
     },
     {
       "job_id": "job_008",
@@ -231,10 +231,10 @@
         "Réglementation RGPD",
         "Explainability (SHAP)"
       ],
-      "posted_date": "2026-01-14",
+      "posted_date": "2026-03-09",
       "url": "https://example-jobs.com/8",
       "remote_ok": false,
-      "applicants": 56
+      "applicants": 48
     },
     {
       "job_id": "job_009",
@@ -259,17 +259,17 @@
         "Big Data (Spark)",
         "Architecture cloud"
       ],
-      "posted_date": "2026-01-11",
+      "posted_date": "2026-02-21",
       "url": "https://example-jobs.com/9",
-      "remote_ok": false,
-      "applicants": 132
+      "remote_ok": true,
+      "applicants": 58
     },
     {
       "job_id": "job_010",
       "category": "data_scientist",
       "title": "Data Scientist - HealthTech",
       "company": "MedAI",
-      "location": "Toulouse, France",
+      "location": "Lyon, France",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "48-58K€",
@@ -287,17 +287,17 @@
         "Clinical trials analysis",
         "Explainable AI"
       ],
-      "posted_date": "2026-01-22",
+      "posted_date": "2026-03-02",
       "url": "https://example-jobs.com/10",
       "remote_ok": false,
-      "applicants": 134
+      "applicants": 20
     },
     {
       "job_id": "job_011",
       "category": "python_developer",
       "title": "Python Developer Junior",
       "company": "WebDev Studio",
-      "location": "Toulouse, France",
+      "location": "Nantes, France",
       "type": "CDI",
       "experience": "0-2 ans",
       "salary": "32-42K€",
@@ -315,10 +315,10 @@
         "CI/CD",
         "Redis"
       ],
-      "posted_date": "2026-01-12",
+      "posted_date": "2026-02-26",
       "url": "https://example-jobs.com/11",
-      "remote_ok": true,
-      "applicants": 62
+      "remote_ok": false,
+      "applicants": 134
     },
     {
       "job_id": "job_012",
@@ -343,17 +343,17 @@
         "Kubernetes",
         "AWS/GCP"
       ],
-      "posted_date": "2025-12-30",
+      "posted_date": "2026-02-24",
       "url": "https://example-jobs.com/12",
       "remote_ok": false,
-      "applicants": 135
+      "applicants": 116
     },
     {
       "job_id": "job_013",
       "category": "python_developer",
       "title": "Python Developer - Data Engineering",
       "company": "BigData Corp",
-      "location": "Bordeaux, France",
+      "location": "Toulouse, France",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "42-55K€",
@@ -371,17 +371,17 @@
         "Data modeling",
         "DBT"
       ],
-      "posted_date": "2026-01-12",
+      "posted_date": "2026-02-19",
       "url": "https://example-jobs.com/13",
-      "remote_ok": true,
-      "applicants": 96
+      "remote_ok": false,
+      "applicants": 144
     },
     {
       "job_id": "job_014",
       "category": "python_developer",
       "title": "Full Stack Developer Python/React",
       "company": "TechStartup",
-      "location": "Nantes, France",
+      "location": "Lyon, France",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "45-55K€",
@@ -399,17 +399,17 @@
         "Docker/Kubernetes",
         "AWS"
       ],
-      "posted_date": "2026-01-24",
+      "posted_date": "2026-03-04",
       "url": "https://example-jobs.com/14",
-      "remote_ok": false,
-      "applicants": 94
+      "remote_ok": true,
+      "applicants": 54
     },
     {
       "job_id": "job_015",
       "category": "python_developer",
       "title": "Senior Python Developer",
       "company": "Enterprise Tech",
-      "location": "Paris (Hybrid)",
+      "location": "Paris, France",
       "type": "CDI",
       "experience": "4-6 ans",
       "salary": "55-70K€",
@@ -427,17 +427,17 @@
         "Multiple frameworks",
         "Security best practices"
       ],
-      "posted_date": "2026-01-07",
+      "posted_date": "2026-02-24",
       "url": "https://example-jobs.com/15",
-      "remote_ok": true,
-      "applicants": 130
+      "remote_ok": false,
+      "applicants": 133
     },
     {
       "job_id": "job_016",
       "category": "devops_engineer",
       "title": "DevOps Engineer Junior",
       "company": "CloudOps",
-      "location": "Lyon, France",
+      "location": "Nantes, France",
       "type": "CDI",
       "experience": "0-2 ans",
       "salary": "35-45K€",
@@ -455,17 +455,17 @@
         "Ansible",
         "Python scripting"
       ],
-      "posted_date": "2026-01-13",
+      "posted_date": "2026-02-23",
       "url": "https://example-jobs.com/16",
-      "remote_ok": false,
-      "applicants": 139
+      "remote_ok": true,
+      "applicants": 96
     },
     {
       "job_id": "job_017",
       "category": "devops_engineer",
       "title": "DevOps Engineer - Kubernetes",
       "company": "ContainerTech",
-      "location": "Nantes, France",
+      "location": "Paris (Hybrid)",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "45-55K€",
@@ -483,17 +483,17 @@
         "Service mesh (Istio)",
         "CKA certification"
       ],
-      "posted_date": "2026-01-17",
+      "posted_date": "2026-02-17",
       "url": "https://example-jobs.com/17",
       "remote_ok": true,
-      "applicants": 7
+      "applicants": 131
     },
     {
       "job_id": "job_018",
       "category": "devops_engineer",
       "title": "SRE Engineer",
       "company": "ScaleOps",
-      "location": "Paris, France",
+      "location": "Bordeaux, France",
       "type": "CDI",
       "experience": "3-5 ans",
       "salary": "50-65K€",
@@ -511,17 +511,17 @@
         "Multi-cloud",
         "Security (DevSecOps)"
       ],
-      "posted_date": "2026-01-16",
+      "posted_date": "2026-03-02",
       "url": "https://example-jobs.com/18",
-      "remote_ok": false,
-      "applicants": 67
+      "remote_ok": true,
+      "applicants": 73
     },
     {
       "job_id": "job_019",
       "category": "devops_engineer",
       "title": "Platform Engineer",
       "company": "InfraTech",
-      "location": "Paris, France",
+      "location": "Bordeaux, France",
       "type": "CDI",
       "experience": "3-5 ans",
       "salary": "52-68K€",
@@ -539,17 +539,17 @@
         "Multi-tenancy",
         "FinOps"
       ],
-      "posted_date": "2026-01-19",
+      "posted_date": "2026-02-28",
       "url": "https://example-jobs.com/19",
-      "remote_ok": false,
-      "applicants": 148
+      "remote_ok": true,
+      "applicants": 56
     },
     {
       "job_id": "job_020",
       "category": "devops_engineer",
       "title": "Lead DevOps Engineer",
       "company": "BigCorp",
-      "location": "Paris (Hybrid)",
+      "location": "Paris, France",
       "type": "CDI",
       "experience": "5-7 ans",
       "salary": "60-80K€",
@@ -567,17 +567,17 @@
         "Open-source contributions",
         "FinOps certified"
       ],
-      "posted_date": "2026-01-04",
+      "posted_date": "2026-03-05",
       "url": "https://example-jobs.com/20",
       "remote_ok": false,
-      "applicants": 71
+      "applicants": 118
     },
     {
       "job_id": "job_021",
       "category": "frontend_developer",
       "title": "Frontend Developer Junior",
       "company": "WebAgency",
-      "location": "Paris (Hybrid)",
+      "location": "Remote France",
       "type": "CDI",
       "experience": "0-2 ans",
       "salary": "30-40K€",
@@ -595,17 +595,17 @@
         "Tailwind CSS",
         "Testing (Jest)"
       ],
-      "posted_date": "2026-01-16",
+      "posted_date": "2026-03-02",
       "url": "https://example-jobs.com/21",
       "remote_ok": true,
-      "applicants": 69
+      "applicants": 13
     },
     {
       "job_id": "job_022",
       "category": "frontend_developer",
       "title": "React Developer",
       "company": "SaaS Startup",
-      "location": "Lyon, France",
+      "location": "Nantes, France",
       "type": "CDI",
       "experience": "1-3 ans",
       "salary": "38-48K€",
@@ -623,17 +623,17 @@
         "Webpack/Vite",
         "CI/CD"
       ],
-      "posted_date": "2025-12-27",
+      "posted_date": "2026-03-09",
       "url": "https://example-jobs.com/22",
-      "remote_ok": false,
-      "applicants": 104
+      "remote_ok": true,
+      "applicants": 139
     },
     {
       "job_id": "job_023",
       "category": "frontend_developer",
       "title": "Frontend Developer - Vue.js",
       "company": "TechCorp",
-      "location": "Toulouse, France",
+      "location": "Nantes, France",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "40-50K€",
@@ -651,17 +651,17 @@
         "UI libraries (Vuetify)",
         "Docker"
       ],
-      "posted_date": "2026-01-04",
+      "posted_date": "2026-03-12",
       "url": "https://example-jobs.com/23",
       "remote_ok": true,
-      "applicants": 96
+      "applicants": 99
     },
     {
       "job_id": "job_024",
       "category": "frontend_developer",
       "title": "Full Stack JavaScript Developer",
       "company": "Digital Agency",
-      "location": "Bordeaux, France",
+      "location": "Toulouse, France",
       "type": "CDI",
       "experience": "2-4 ans",
       "salary": "42-55K€",
@@ -679,17 +679,17 @@
         "Serverless",
         "Docker"
       ],
-      "posted_date": "2026-01-09",
+      "posted_date": "2026-03-08",
       "url": "https://example-jobs.com/24",
-      "remote_ok": false,
-      "applicants": 93
+      "remote_ok": true,
+      "applicants": 22
     },
     {
       "job_id": "job_025",
       "category": "frontend_developer",
       "title": "Lead Frontend Developer",
       "company": "Enterprise UI",
-      "location": "Paris (Hybrid)",
+      "location": "Bordeaux, France",
       "type": "CDI",
       "experience": "4-6 ans",
       "salary": "55-70K€",
@@ -707,10 +707,10 @@
         "Accessibility (WCAG)",
         "Design systems"
       ],
-      "posted_date": "2026-01-15",
+      "posted_date": "2026-03-05",
       "url": "https://example-jobs.com/25",
-      "remote_ok": false,
-      "applicants": 50
+      "remote_ok": true,
+      "applicants": 97
     }
   ]
 }

@@ -129,6 +129,7 @@ jobs:
           context: .
           file: ./docker/streamlit.Dockerfile
           push: false
+          provenance: false 
           tags: ai-career-coach-streamlit:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -139,6 +140,7 @@ jobs:
           context: .
           file: ./docker/api.Dockerfile   # même image que l'API
           push: false
+          provenance: false
           tags: ai-career-coach-scheduler:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -181,7 +183,7 @@ jobs:
           context: .
           file: ./docker/api.Dockerfile
           push: true
-          # Utilisation de la version en minuscules ici
+          provenance: false
           tags: |
             ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:latest
             ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:${{ github.sha }}
@@ -194,7 +196,7 @@ jobs:
           context: .
           file: ./docker/streamlit.Dockerfile
           push: true
-          # Utilisation de la version en minuscules ici
+          provenance: false
           tags: |
             ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:latest
             ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:${{ github.sha }}
