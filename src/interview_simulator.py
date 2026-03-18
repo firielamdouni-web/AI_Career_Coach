@@ -1,5 +1,5 @@
 """
-🎤 Simulateur d'Entretien IA
+Simulateur d'Entretien IA
 Génération de questions personnalisées et évaluation des réponses avec Groq (Llama 3.1 70B)
 """
 
@@ -9,7 +9,6 @@ from groq import Groq
 import json
 from dotenv import load_dotenv
 
-# Charger les variables d'environnement depuis .env
 load_dotenv()
 
 
@@ -29,14 +28,14 @@ class InterviewSimulator:
 
         if not self.api_key:
             raise ValueError(
-                "❌ Clé API Groq manquante.\n"
+                "Clé API Groq manquante.\n"
                 "Définissez GROQ_API_KEY dans vos variables d'environnement ou passez api_key en paramètre.\n"
                 "Obtenez une clé gratuite sur : https://console.groq.com/")
 
         self.client = Groq(api_key=self.api_key)
         self.model = "llama-3.3-70b-versatile"
 
-        print(f"✅ InterviewSimulator initialisé avec {self.model}")
+        print(f" InterviewSimulator initialisé avec {self.model}")
 
     def generate_questions(
         self,
@@ -59,11 +58,9 @@ class InterviewSimulator:
         Returns:
             Dict avec questions RH et techniques
         """
-        # Limiter les compétences pour le prompt (éviter overflow)
         cv_skills_str = ', '.join(cv_skills[:20])
         requirements_str = ', '.join(job_requirements[:15])
 
-        # Construire le prompt
         prompt = f"""Tu es un recruteur technique expérimenté. Tu dois préparer un entretien pour un candidat junior.
 
 **PROFIL CANDIDAT:**
@@ -103,7 +100,6 @@ Format JSON attendu:
 """
 
         try:
-            # Appel API Groq
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -121,10 +117,8 @@ Format JSON attendu:
                 top_p=0.9
             )
 
-            # Extraire le JSON
             content = response.choices[0].message.content.strip()
 
-            # Nettoyer le JSON (enlever markdown si présent)
             if content.startswith("```json"):
                 content = content.replace(
                     "```json", "").replace(
@@ -132,10 +126,8 @@ Format JSON attendu:
             elif content.startswith("```"):
                 content = content.replace("```", "").strip()
 
-            # Parser le JSON
             questions = json.loads(content)
 
-            # Validation
             if "rh_questions" not in questions or "technical_questions" not in questions:
                 raise ValueError(
                     "Format JSON invalide : clés 'rh_questions' ou 'technical_questions' manquantes")
@@ -148,18 +140,18 @@ Format JSON attendu:
                 raise ValueError(
                     "Format JSON invalide : 'rh_questions' et 'technical_questions' doivent être des listes")
 
-            print(f"✅ {len(questions['rh_questions'])} questions RH générées")
+            print(f" {len(questions['rh_questions'])} questions RH générées")
             print(
-                f"✅ {len(questions['technical_questions'])} questions techniques générées")
+                f" {len(questions['technical_questions'])} questions techniques générées")
 
             return questions
 
         except json.JSONDecodeError as e:
-            print(f"❌ Erreur parsing JSON : {e}")
+            print(f" Erreur parsing JSON : {e}")
             print(f"Réponse brute (300 premiers caractères) : {content[:300]}")
             raise ValueError(f"Le LLM n'a pas retourné un JSON valide : {e}")
         except Exception as e:
-            print(f"❌ Erreur génération questions : {e}")
+            print(f" Erreur génération questions : {e}")
             raise
 
     def evaluate_answer(
@@ -181,10 +173,8 @@ Format JSON attendu:
         Returns:
             Dict avec score, feedback et points forts/faibles
         """
-        # Construire le contexte
         skill_context = f"\nCompétence évaluée: {target_skill}" if target_skill else ""
 
-        # Prompt d'évaluation
         prompt = f"""Tu es un évaluateur d'entretien technique bienveillant mais rigoureux. Évalue cette réponse.
 
 **QUESTION:**
@@ -234,7 +224,6 @@ Format JSON attendu:
 """
 
         try:
-            # Appel API
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -247,13 +236,12 @@ Format JSON attendu:
                         "content": prompt
                     }
                 ],
-                temperature=0.3,  # Plus déterministe pour l'évaluation
+                temperature=0.3, 
                 max_tokens=1200
             )
 
             content = response.choices[0].message.content.strip()
 
-            # Nettoyer JSON
             if content.startswith("```json"):
                 content = content.replace(
                     "```json", "").replace(
@@ -263,7 +251,6 @@ Format JSON attendu:
 
             evaluation = json.loads(content)
 
-            # Validation
             required_keys = [
                 "score",
                 "evaluation",
@@ -275,31 +262,28 @@ Format JSON attendu:
                 raise ValueError(
                     f"Clés manquantes dans le JSON : {missing_keys}")
 
-            # Normaliser le score (0-100)
             evaluation["score"] = max(0, min(100, float(evaluation["score"])))
 
-            # S'assurer que les listes sont bien des listes
             if not isinstance(evaluation["points_forts"], list):
                 evaluation["points_forts"] = [str(evaluation["points_forts"])]
             if not isinstance(evaluation["points_amelioration"], list):
                 evaluation["points_amelioration"] = [
                     str(evaluation["points_amelioration"])]
 
-            # Ajouter recommandations si manquantes
             if "recommandations" not in evaluation:
                 evaluation["recommandations"] = [
                     "Continuer à pratiquer", "Préparer des exemples concrets"]
 
-            print(f"✅ Réponse évaluée : {evaluation['score']:.0f}/100")
+            print(f" Réponse évaluée : {evaluation['score']:.0f}/100")
 
             return evaluation
 
         except json.JSONDecodeError as e:
-            print(f"❌ Erreur parsing JSON : {e}")
+            print(f" Erreur parsing JSON : {e}")
             print(f"Réponse brute : {content[:300]}")
             raise ValueError(f"Le LLM n'a pas retourné un JSON valide : {e}")
         except Exception as e:
-            print(f"❌ Erreur évaluation : {e}")
+            print(f" Erreur évaluation : {e}")
             raise
 
     def generate_final_feedback(
@@ -327,11 +311,9 @@ Format JSON attendu:
                 "prochaines_etapes": ["Commencer la simulation d'entretien"]
             }
 
-        # Calculer statistiques
         scores = [eval_data["score"] for eval_data in evaluations]
         avg_score = sum(scores) / len(scores)
 
-        # Agréger points forts/faibles
         all_strengths = []
         all_improvements = []
 
@@ -339,7 +321,6 @@ Format JSON attendu:
             all_strengths.extend(eval_data.get("points_forts", []))
             all_improvements.extend(eval_data.get("points_amelioration", []))
 
-        # Prompt pour feedback global
         prompt = f"""Tu es un recruteur senior. Génère un feedback global sur cette simulation d'entretien.
 
 **POSTE CIBLÉ:** {job_title}
@@ -400,13 +381,12 @@ Format JSON attendu:
 
             feedback = json.loads(content)
 
-            print(f"✅ Feedback global généré")
+            print(f" Feedback global généré")
 
             return feedback
 
         except Exception as e:
-            print(f"⚠️  Erreur génération feedback global : {e}")
-            # Fallback avec feedback basique
+            print(f"  Erreur génération feedback global : {e}")
             if avg_score < 50:
                 decision = "À retravailler"
             elif avg_score < 75:

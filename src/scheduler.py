@@ -1,5 +1,5 @@
 """
-🕐 Scheduler automatique - Scrape JSearch 2x/jour
+Scheduler automatique - Scrape JSearch 2x/jour
 Lance ce fichier en parallèle de l'API :
     python -m src.scheduler
 """
@@ -24,7 +24,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── Requêtes à scraper ────────────────────────────────────────────────────────
 SCRAPE_QUERIES = [
     {"query": "Data Scientist", "location": "France", "num_pages": 1},
     {"query": "Machine Learning Engineer", "location": "France", "num_pages": 1},
@@ -57,15 +56,13 @@ def _get_fresh_db():
     """
     db = get_db_manager()
     try:
-        # Tester si la connexion est encore active
         if db.conn is None or db.conn.closed:
-            logger.info("🔄 Reconnexion DB...")
+            logger.info(" Reconnexion DB...")
             db._connect()
         else:
-            # Ping léger
             db.cursor.execute("SELECT 1")
     except Exception:
-        logger.info("🔄 Reconnexion DB après erreur...")
+        logger.info(" Reconnexion DB après erreur...")
         try:
             db._connect()
         except Exception as e:
@@ -76,7 +73,7 @@ def _get_fresh_db():
 def run_daily_scrape():
     """Scrape toutes les requêtes et sauvegarde les nouveaux jobs en DB."""
     logger.info("=" * 50)
-    logger.info(f"🚀 Démarrage scraping — {datetime.now():%Y-%m-%d %H:%M}")
+    logger.info(f" Démarrage scraping — {datetime.now():%Y-%m-%d %H:%M}")
     logger.info("=" * 50)
 
     scraper = get_job_scraper()
@@ -84,9 +81,8 @@ def run_daily_scrape():
     total_found = 0
 
     for q in SCRAPE_QUERIES:
-        logger.info(f"🔍 Scraping : '{q['query']}' @ {q['location']}")
+        logger.info(f" Scraping : '{q['query']}' @ {q['location']}")
         try:
-            # ── 1. Scraping JSearch ───────────────────────────────────────
             jobs = scraper.search_jobs(
                 query=q['query'],
                 location=q['location'],
@@ -97,7 +93,6 @@ def run_daily_scrape():
             total_found += len(jobs)
             logger.info(f"   → {len(jobs)} offres trouvées")
 
-            # ── 2. Connexion DB fraîche ───────────────────────────────────
             db = _get_fresh_db()
             saved = 0
 
@@ -107,13 +102,12 @@ def run_daily_scrape():
                     if not job_id:
                         continue
 
-                    # Vérifier si déjà en DB
                     db.cursor.execute(
                         "SELECT 1 FROM scraped_jobs WHERE job_id = %s LIMIT 1",
                         (job_id,)
                     )
                     if db.cursor.fetchone():
-                        continue  # doublon → skip
+                        continue 
 
                     skills = _parse_skills(
                         job.get('required_skills') or job.get('requirements', [])
@@ -142,55 +136,51 @@ def run_daily_scrape():
                     saved += 1
 
                 except Exception as e:
-                    logger.warning(f"   ⚠️ Insert error ({job_id}): {e}")
+                    logger.warning(f" Insert error ({job_id}): {e}")
                     try:
                         db.conn.rollback()
                     except Exception:
                         pass
 
-            # ── 3. Commit ─────────────────────────────────────────────────
             db.conn.commit()
             total_new += saved
-            logger.info(f"   ✅ {saved} nouveaux jobs sauvegardés")
+            logger.info(f" {saved} nouveaux jobs sauvegardés")
 
         except Exception as e:
-            logger.error(f"   ❌ Scraping échoué pour '{q['query']}': {e}")
+            logger.error(f" Scraping échoué pour '{q['query']}': {e}")
 
     try:
         cleanup_db = _get_fresh_db()
         cleanup_db.clean_old_scraped_jobs(days_to_keep=30)
     except Exception as e:
-        logger.error(f"⚠️ Impossible de nettoyer la DB : {e}")
+        logger.error(f"Impossible de nettoyer la DB : {e}")
 
     logger.info("-" * 50)
-    logger.info(f"✅ Terminé : {total_new} nouveaux / {total_found} trouvés")
+    logger.info(f"Terminé : {total_new} nouveaux / {total_found} trouvés")
     logger.info("=" * 50)
 
-# --- SYNCHRONISATION API AUTOMATIQUE ---
-    logger.info("🔄 Déclenchement de la synchronisation DB -> FAISS sur l'API...")
+    logger.info("Déclenchement de la synchronisation DB -> FAISS sur l'API...")
     try:
         response = requests.post("http://api:8000/api/v1/sync-jobs")
         if response.status_code == 200:
-            logger.info(f"✅ API synchronisée avec succès: {response.json().get('jobs_loaded')} offres chargées.")
+            logger.info(f"API synchronisée avec succès: {response.json().get('jobs_loaded')} offres chargées.")
         else:
-            logger.error(f"❌ Erreur de synchronisation API: {response.text}")
+            logger.error(f"Erreur de synchronisation API: {response.text}")
     except Exception as e:
-        logger.error(f"❌ Impossible de contacter l'API pour la synchronisation: {e}")
+        logger.error(f"Impossible de contacter l'API pour la synchronisation: {e}")
 
 
 def main():
-    logger.info("🕐 Scheduler démarré — scraping 1x/jour (plan Free JSearch)")
-    logger.info("📅 Horaire : 08:00")
+    logger.info("Scheduler démarré — scraping 1x/jour (plan Free JSearch)")
+    logger.info("Horaire : 08:00")
 
-    # Scraper immédiatement au lancement
     run_daily_scrape()
 
-    # 1 SEULE FOIS PAR JOUR 
     schedule.every().day.at("08:00").do(run_daily_scrape)
 
     while True:
         next_run = schedule.next_run()
-        logger.info(f"⏳ Prochain scraping : {next_run:%Y-%m-%d %H:%M}")
+        logger.info(f"Prochain scraping : {next_run:%Y-%m-%d %H:%M}")
         schedule.run_pending()
         time.sleep(60)
 

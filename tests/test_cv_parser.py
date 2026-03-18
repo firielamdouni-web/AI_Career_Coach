@@ -77,7 +77,6 @@ class TestCVParser:
         mock_pdf.__exit__ = MagicMock(return_value=False)
         mock_pdfplumber.return_value = mock_pdf
 
-        # Créer un fichier PDF factice
         fake_pdf = tmp_path / "test.pdf"
         fake_pdf.write_bytes(b"fake pdf content")
 

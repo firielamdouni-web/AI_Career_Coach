@@ -19,7 +19,6 @@ with col_btn:
 st.markdown("Visualisation en temps réel des performances de l'application et de la base de données réelle.")
 st.divider()
 
-# -- FETCH REAL DATA --
 try:
     stats_data = requests.get(f"{API_BASE_URL}/api/v1/stats", timeout=5).json()
     monit_data = requests.get(f"{API_BASE_URL}/api/v1/monitoring-data", timeout=5).json()
@@ -36,14 +35,12 @@ except Exception as e:
     st.error(f"Erreur de connexion à l'API : {e}")
     st.stop()
 
-# -- METRICS AVEC FLÈCHES (DELTAS) --
 col1, col2, col3, col4 = st.columns(4)
 
 total_req = len(df_logs) if not df_logs.empty else 0
 avg_time = f"{df_logs['response_time_ms'].mean() / 1000:.2f}s" if not df_logs.empty else "0s"
 success_rate = f"{(len(df_logs[df_logs['status_code'] < 400]) / total_req * 100):.1f}%" if total_req > 0 else "100%"
 
-# Pour le réalisme, on compare avec de fausses statistiques antérieures ou on affiche un statut actif
 with col1:
     st.metric(label="Total Requêtes (Actives)", value=total_req, delta=f"+{total_req} depuis lancement")
 with col2:
@@ -53,7 +50,6 @@ with col3:
 with col4:
     st.metric(label="Offres indexées", value=total_jobs, delta=f"{scraped_jobs} récupérées JSearch")
 
-# -- CHARTS API --
 st.markdown("### 📈 Surveillances des flux API")
 col_api1, col_api2 = st.columns(2)
 
@@ -69,7 +65,6 @@ if not df_logs.empty:
         df_status = df_logs['status_code'].astype(str).value_counts().reset_index()
         df_status.columns = ['status_code', 'count']
         
-        # Mapping explicite des couleurs pour les codes HTTP
         color_map = {'200': '#22c55e', '404': '#f59e0b', '422': '#f59e0b', '500': '#ef4444'}
         
         fig_pie = px.pie(df_status, names='status_code', values='count', title="Répartition des Codes HTTP",
@@ -79,9 +74,8 @@ if not df_logs.empty:
 else:
     st.info("Aucune requête API enregistrée pour le moment. Naviguez sur l'application !")
 
-# -- CHARTS ML ET DATA --
 st.markdown("### 🧠 Modèles MLOps & Entraînements")
-col_ia1, col_ia2, col_ia3, col_ia4 = st.columns([1.5, 1.5, 1, 1]) # Ajout d'une 4ème colonne
+col_ia1, col_ia2, col_ia3, col_ia4 = st.columns([1.5, 1.5, 1, 1]) 
 
 with col_ia1:
     if len(scores) > 0:
@@ -113,12 +107,10 @@ with col_ia3:
 
 with col_ia4:
     st.markdown("##### ⚠️ Quota API JSearch")
-    # Estimation : 1 requête = ~15 offres scrapées
     QUOTA_MAX = 200
     estimated_req = min(int(scraped_jobs / 15), QUOTA_MAX)
     quota_left = QUOTA_MAX - estimated_req
     
-    # Couleur dynamique : Rouge si < 20 requêtes, Orange si < 50, Vert sinon
     color = "green" if quota_left > 50 else "orange" if quota_left > 20 else "red"
     
     fig_gauge = go.Figure(go.Indicator(
@@ -130,9 +122,9 @@ with col_ia4:
             'axis': {'range': [0, QUOTA_MAX]},
             'bar': {'color': color},
             'steps': [
-                {'range': [0, 150], 'color': "rgba(34, 197, 94, 0.2)"},   # Vert clair
-                {'range': [150, 180], 'color': "rgba(245, 158, 11, 0.2)"}, # Orange clair
-                {'range': [180, 200], 'color': "rgba(239, 68, 68, 0.2)"}   # Rouge clair
+                {'range': [0, 150], 'color': "rgba(34, 197, 94, 0.2)"},   
+                {'range': [150, 180], 'color': "rgba(245, 158, 11, 0.2)"}, 
+                {'range': [180, 200], 'color': "rgba(239, 68, 68, 0.2)"}   
             ],
         }
     ))

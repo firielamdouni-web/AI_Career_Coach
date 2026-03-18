@@ -42,7 +42,6 @@ def matcher():
         mock_model = MagicMock()
         mock_model.get_sentence_embedding_dimension.return_value = 768
 
-        # Simuler encode : retourne des vecteurs normalisés
         def mock_encode(texts, **kwargs):
             np.random.seed(42)
             vectors = np.random.rand(len(texts), 768).astype('float32')
@@ -52,7 +51,6 @@ def matcher():
         mock_model.encode.side_effect = mock_encode
         mock_st.return_value = mock_model
 
-        # Mock SkillsExtractor
         with patch('src.job_matcher.SkillsExtractor'):
             from src.job_matcher import JobMatcher
             return JobMatcher()

@@ -282,9 +282,9 @@ class TestGetInterviewSimulatorSingleton:
                 patch('os.getenv', return_value="fake_key"):
             from src.interview_simulator import get_interview_simulator
             import src.interview_simulator as module
-            module._interview_simulator = None  # reset
+            module._interview_simulator = None  
 
             sim1 = get_interview_simulator()
             sim2 = get_interview_simulator()
             assert sim1 is sim2
-            module._interview_simulator = None  # cleanup
+            module._interview_simulator = None  

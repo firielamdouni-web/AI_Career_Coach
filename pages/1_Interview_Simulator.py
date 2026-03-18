@@ -1,5 +1,5 @@
 """
-🎤 Simulation d'Entretien Interactive
+Simulation d'Entretien Interactive
 Page Streamlit pour pratiquer les entretiens d'embauche avec IA
 """
 
@@ -277,7 +277,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     current_index = st.session_state.current_question_index
     current_question = questions[current_index]
     
-    # Barre de progression
     progress_percentage = (current_index / len(questions)) * 100
     
     st.markdown(f"""
@@ -291,7 +290,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown("---")
     
-    # Afficher la question
     st.markdown('<div class="question-card">', unsafe_allow_html=True)
     
     question_type_emoji = {
@@ -315,7 +313,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Zone de réponse
     st.markdown("### 💬 Votre réponse")
     
     answer = st.text_area(
@@ -325,7 +322,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
         key=f"answer_{current_index}"
     )
     
-    # Conseils contextuels
     st.markdown('<div class="tip-box">', unsafe_allow_html=True)
     st.markdown("### 💡 Conseils pour cette question")
     
@@ -350,7 +346,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Boutons d'action
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -374,7 +369,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                     )
                     
                     if evaluation:
-                        # Sauvegarder
                         st.session_state.answers.append({
                             'question_id': current_question['id'],
                             'question': current_question['question'],
@@ -383,7 +377,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                         })
                         st.session_state.evaluations.append(evaluation)
                         
-                        # Afficher le score immédiatement
                         score = evaluation['score']
                         if score >= 70:
                             st.success(f"🎉 Excellent ! Score: {score:.0f}/100")
@@ -392,12 +385,10 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                         else:
                             st.warning(f"📈 À améliorer. Score: {score:.0f}/100")
                         
-                        # Passer à la question suivante
                         if current_index < len(questions) - 1:
                             st.session_state.current_question_index += 1
                             st.rerun()
                         else:
-                            # Fin de l'entretien
                             st.session_state.interview_completed = True
                             st.rerun()
                     else:
@@ -429,7 +420,6 @@ elif st.session_state.interview_completed:
             st.rerun()
         st.stop()
     
-    # Statistiques globales
     scores = [ev['score'] for ev in evaluations]
     avg_score = sum(scores) / len(scores)
     
@@ -465,7 +455,6 @@ elif st.session_state.interview_completed:
         st.markdown(f"🔴 **Faible (<30)** : {faible} ({faible/len(scores)*100:.0f}%)")
     
     with col2:
-        # Décision finale
         if avg_score >= 75:
             st.success("🎉 **Décision** : Excellent profil ! Vous êtes prêt pour l'entretien.")
         elif avg_score >= 60:
@@ -475,14 +464,12 @@ elif st.session_state.interview_completed:
         else:
             st.error("🔄 **Décision** : À retravailler. Pratiquez régulièrement.")
     
-    # Détail par question
     st.markdown("---")
     st.subheader("📋 Détail des réponses")
     
     for idx, (answer_data, evaluation) in enumerate(zip(st.session_state.answers, evaluations), 1):
         score = evaluation['score']
         
-        # Classe CSS selon le score
         if score >= 70:
             card_class = "evaluation-excellent"
             emoji = "🟢"
@@ -518,7 +505,6 @@ elif st.session_state.interview_completed:
                 for reco in evaluation['recommandations']:
                     st.markdown(f"- {reco}")
     
-    # Actions finales
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
     

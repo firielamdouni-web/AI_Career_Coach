@@ -42,14 +42,12 @@ def matcher():
             patch('pathlib.Path.exists', return_value=True):
 
         mock_model = MagicMock()
-        # Retourner des embeddings factices (768-dim)
         mock_model.encode.return_value = np.random.rand(1, 768)[0]
         mock_st.return_value = mock_model
 
         m = JobMatcher.__new__(JobMatcher)
         m.skills_extractor = MagicMock()
 
-        # --- MODIFICATION ICI ---
         m.skills_extractor.extract_from_cv.return_value = {
             "technical_skills": ["python", "machine learning"],
             "soft_skills": []

@@ -6,7 +6,6 @@ from unittest.mock import patch, MagicMock
 from src.database import DatabaseManager, get_db_manager, close_db_connection
 import psycopg2
 
-# Marquer tout le fichier comme test d'intégration (ignoré en CI)
 pytestmark = pytest.mark.integration
 
 MOCK_DATABASE_URL = "postgresql://user:password@localhost:5432/testdb"
@@ -100,7 +99,6 @@ class TestSaveCVAnalysis:
 
         db_manager.save_cv_analysis(**MOCK_CV_DATA)
 
-        # Récupérer tous les appels et vérifier qu'un INSERT est présent
         all_calls = db_manager.cursor.execute.call_args_list
         sql_calls = [str(c) for c in all_calls]
         assert any("INSERT INTO cv_analyses" in s for s in sql_calls)
@@ -119,8 +117,8 @@ class TestSaveCVAnalysis:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
-            raise psycopg2.Error("DB error")  # INSERT → KO
+                return None  
+            raise psycopg2.Error("DB error")  
 
         db_manager.cursor.execute.side_effect = execute_side_effect
 
@@ -134,13 +132,12 @@ class TestSaveCVAnalysis:
 
         db_manager.save_cv_analysis(**MOCK_CV_DATA)
 
-        # Trouver l'appel INSERT parmi tous les appels execute
         all_calls = db_manager.cursor.execute.call_args_list
         insert_call = next(
             c for c in all_calls
             if "INSERT INTO cv_analyses" in str(c)
         )
-        call_args = insert_call[0][1]  # 2e arg positionnel = tuple de valeurs
+        call_args = insert_call[0][1] 
         total_expected = len(
             MOCK_CV_DATA["technical_skills"]) + len(MOCK_CV_DATA["soft_skills"])
         assert total_expected in call_args
@@ -180,8 +177,8 @@ class TestSaveJobRecommendation:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
-            raise psycopg2.Error("DB error")  # INSERT → KO
+                return None 
+            raise psycopg2.Error("DB error") 
 
         db_manager.cursor.execute.side_effect = execute_side_effect
 
@@ -234,8 +231,8 @@ class TestGetRecentCVAnalyses:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
-            raise psycopg2.Error("DB error")  # vraie query → KO
+                return None  
+            raise psycopg2.Error("DB error") 
 
         db_manager.cursor.execute.side_effect = execute_side_effect
 
@@ -262,7 +259,7 @@ class TestGetRecommendationsForCV:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
+                return None 
             raise psycopg2.Error("DB error")
 
         db_manager.cursor.execute.side_effect = execute_side_effect
@@ -299,7 +296,7 @@ class TestSaveInterviewSimulation:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
+                return None 
             raise psycopg2.Error("DB error")
 
         db_manager.cursor.execute.side_effect = execute_side_effect
@@ -348,7 +345,7 @@ class TestGetStatistics:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return None  # SELECT 1 → OK
+                return None  
             raise psycopg2.Error("DB error")
 
         db_manager.cursor.execute.side_effect = execute_side_effect

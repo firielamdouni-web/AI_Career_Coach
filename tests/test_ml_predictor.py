@@ -6,7 +6,6 @@ import numpy as np
 from unittest.mock import patch, MagicMock
 from src.ml_predictor import MLPredictor, get_ml_predictor, FEATURES
 
-# Création dynamique des fausses variables pour couvrir exactement les 27 features
 MOCK_FEATURES = {feature: 10.0 for feature in FEATURES}
 MOCK_FEATURES['coverage'] = 60.0
 MOCK_FEATURES['quality'] = 75.0
@@ -19,11 +18,10 @@ def predictor():
             patch('joblib.load') as mock_joblib:
 
         mock_model = MagicMock()
-        mock_model.predict.return_value = np.array([2])  # Perfect Fit
+        mock_model.predict.return_value = np.array([2])  
         mock_model.predict_proba.return_value = np.array([[0.05, 0.15, 0.80]])
 
         mock_scaler = MagicMock()
-        # Modifié pour renvoyer 27 éléments au lieu de 15
         mock_scaler.transform.return_value = np.array([[0.1] * len(FEATURES)])
 
         mock_joblib.side_effect = [mock_model, mock_scaler]

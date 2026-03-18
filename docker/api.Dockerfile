@@ -30,12 +30,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# ✅ Pré-télécharger les modèles directement au build
 RUN . /opt/venv/bin/activate && python -c \
     "from sentence_transformers import SentenceTransformer; \
-    print('📥 Téléchargement all-mpnet-base-v2...'); \
+    print('Téléchargement all-mpnet-base-v2...'); \
     SentenceTransformer('all-mpnet-base-v2'); \
-    print('✅ Modèle chargé')"
+    print('Modèle chargé')"
 
 RUN . /opt/venv/bin/activate && python -m spacy download en_core_web_sm 2>/dev/null || true
 

@@ -8,7 +8,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from xgboost import XGBClassifier
 
-# Silencer le warning git
 os.environ["GIT_PYTHON_REFRESH"] = "quiet"
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
@@ -24,10 +23,10 @@ features = [
     'skills_ratio', 'similarity_mean', 'similarity_max', 'similarity_std',
     'top3_similarity_avg', 'tfidf_similarity', 'embedding_similarity',
     'nb_resume_technical', 'nb_resume_soft', 'nb_job_technical', 'nb_job_soft',
-    # ✅ AJOUT : features textuelles CV
+
     'resume_text_length', 'resume_text_word_count', 'resume_text_unique_words',
     'resume_text_avg_word_length', 'resume_text_sentence_count', 'resume_text_capital_ratio',
-    # ✅ AJOUT : features textuelles Job
+
     'job_description_text_length', 'job_description_text_word_count', 'job_description_text_unique_words',
     'job_description_text_avg_word_length', 'job_description_text_sentence_count', 'job_description_text_capital_ratio',
 ]
@@ -80,7 +79,6 @@ with mlflow.start_run(run_name="XGBoost_v1"):
     mlflow.log_metric("test_f1", test_f1)
     mlflow.log_metric("overfitting", train_acc - test_acc)
     
-    # ✅ même logique d'écriture artifacts
     tmp_dir = Path("/tmp/mlflow/tmp_artifacts")
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -89,12 +87,10 @@ with mlflow.start_run(run_name="XGBoost_v1"):
     mlflow.log_artifact(str(tmp_dir / "model.pkl"))
     mlflow.log_artifact(str(tmp_dir / "scaler.pkl"))
 
-    # ✅ CHANGÉ : features.txt avec 27 features
     with open(tmp_dir / "features.txt", "w") as f:
         f.write("\n".join(features))
     mlflow.log_artifact(str(tmp_dir / "features.txt"))
 
-    # ✅ AJOUT : metadata.json pour ml_predictor.py
     import json
     metadata = {
         'model_name':      'XGBoost',
@@ -114,7 +110,7 @@ with mlflow.start_run(run_name="XGBoost_v1"):
         json.dump(metadata, f, indent=4)
     mlflow.log_artifact(str(tmp_dir / "metadata.json"))
 
-    print(f"✅ Run MLflow : XGBoost_clean_v1_27features")
+    print(f" Run MLflow : XGBoost_clean_v1_27features")
     print(f"   • Test Accuracy : {test_acc:.4f}")
     print(f"   • Features      : {len(features)}")
     print(f"   • Run ID        : {mlflow.active_run().info.run_id}")

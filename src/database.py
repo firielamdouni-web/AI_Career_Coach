@@ -30,9 +30,9 @@ class DatabaseManager:
                 cursor_factory=RealDictCursor
             )
             self.cursor = self.conn.cursor()
-            logger.info("✅ PostgreSQL connecté")
+            logger.info(" PostgreSQL connecté")
         except psycopg2.Error as e:
-            logger.error(f"❌ Erreur connexion PostgreSQL: {e}")
+            logger.error(f" Erreur connexion PostgreSQL: {e}")
             raise ConnectionError(f"PostgreSQL connection failed: {e}")
 
     def _ensure_connection(self):
@@ -48,7 +48,6 @@ class DatabaseManager:
     def clean_old_scraped_jobs(self, days_to_keep: int = 30) -> int:
         """Supprime les offres scrapées plus vieilles que 'days_to_keep' jours pour éviter l'explosion de la DB."""
         try:
-            # En PostgreSQL, on peut utiliser NOW() - INTERVAL 'X days'
             query = f"DELETE FROM scraped_jobs WHERE scraped_at < NOW() - INTERVAL '{days_to_keep} days'"
             self.cursor.execute(query)
             deleted_count = self.cursor.rowcount
@@ -71,7 +70,7 @@ class DatabaseManager:
         cv_text: str,
         technical_skills: List[str],
         soft_skills: List[str],
-        user_id: int = 1  # ✅ Par défaut anonymous (id=1)
+        user_id: int = 1  
     ) -> int:
         """Sauvegarder une analyse de CV"""
         self._ensure_connection()
@@ -87,7 +86,7 @@ class DatabaseManager:
             """, (
                 user_id,
                 cv_filename,
-                cv_text,  # ✅ Pas de limitation
+                cv_text,
                 technical_skills,
                 soft_skills,
                 total_skills
@@ -96,12 +95,12 @@ class DatabaseManager:
             cv_id = self.cursor.fetchone()['id']
             self.conn.commit()
 
-            logger.info(f"✅ CV sauvegardé (ID: {cv_id})")
+            logger.info(f" CV sauvegardé (ID: {cv_id})")
             return cv_id
 
         except psycopg2.Error as e:
             self.conn.rollback()
-            logger.error(f"❌ Erreur sauvegarde CV: {e}")
+            logger.error(f" Erreur sauvegarde CV: {e}")
             raise
 
     def get_recent_cv_analyses(self, limit: int = 10) -> List[Dict]:
@@ -119,7 +118,7 @@ class DatabaseManager:
             return [dict(row) for row in self.cursor.fetchall()]
 
         except psycopg2.Error as e:
-            logger.error(f"❌ Erreur lecture CSV analyses: {e}")
+            logger.error(f" Erreur lecture CSV analyses: {e}")
             return []
 
     # ========================================================================
@@ -157,12 +156,12 @@ class DatabaseManager:
             rec_id = self.cursor.fetchone()['id']
             self.conn.commit()
 
-            logger.info(f"✅ Recommandation sauvegardée (ID: {rec_id})")
+            logger.info(f" Recommandation sauvegardée (ID: {rec_id})")
             return rec_id
 
         except psycopg2.Error as e:
             self.conn.rollback()
-            logger.error(f"❌ Erreur sauvegarde recommandation: {e}")
+            logger.error(f" Erreur sauvegarde recommandation: {e}")
             raise
 
     def get_recommendations_for_cv(self, cv_analysis_id: int) -> List[Dict]:
@@ -179,7 +178,7 @@ class DatabaseManager:
             return [dict(row) for row in self.cursor.fetchall()]
 
         except psycopg2.Error as e:
-            logger.error(f"❌ Erreur lecture recommandations: {e}")
+            logger.error(f" Erreur lecture recommandations: {e}")
             return []
 
     # ========================================================================
@@ -218,12 +217,12 @@ class DatabaseManager:
             sim_id = self.cursor.fetchone()['id']
             self.conn.commit()
 
-            logger.info(f"✅ Simulation sauvegardée (ID: {sim_id})")
+            logger.info(f" Simulation sauvegardée (ID: {sim_id})")
             return sim_id
 
         except psycopg2.Error as e:
             self.conn.rollback()
-            logger.error(f"❌ Erreur sauvegarde simulation: {e}")
+            logger.error(f" Erreur sauvegarde simulation: {e}")
             raise
 
     def get_statistics(self) -> Dict[str, Any]:
@@ -249,11 +248,11 @@ class DatabaseManager:
             result = self.cursor.fetchone()['avg_score']
             stats['average_score'] = round(float(result), 2) if result else 0.0
 
-            logger.info(f"📊 Stats: {stats}")
+            logger.info(f" Stats: {stats}")
             return stats
 
         except psycopg2.Error as e:
-            logger.error(f"❌ Erreur stats: {e}")
+            logger.error(f" Erreur stats: {e}")
             return {}
 
     def disconnect(self):
@@ -262,7 +261,7 @@ class DatabaseManager:
             self.cursor.close()
         if self.conn:
             self.conn.close()
-        logger.info("✅ PostgreSQL déconnecté")
+        logger.info(" PostgreSQL déconnecté")
 
 
 # ============================================================================
@@ -281,7 +280,7 @@ def get_db_manager() -> DatabaseManager:
 
         if not database_url:
             raise ValueError(
-                "❌ DATABASE_URL not found. Check .env file."
+                " DATABASE_URL not found. Check .env file."
             )
 
         _db_manager = DatabaseManager(database_url)

@@ -1,5 +1,5 @@
 """
-🤖 Module de prédiction ML avec XGBoost
+Module de prédiction ML avec XGBoost
 Charge le modèle depuis MLflow et calcule les features à la volée
 """
 
@@ -73,10 +73,10 @@ class MLPredictor:
             self.model = joblib.load(model_path)
             self.scaler = joblib.load(scaler_path)
             self._loaded = True
-            logger.info("✅ Modèle XGBoost chargé avec succès")
+            logger.info("Modèle XGBoost chargé avec succès")
 
         except Exception as e:
-            logger.error(f"❌ Erreur chargement modèle ML : {e}")
+            logger.error(f"Erreur chargement modèle ML : {e}")
 
     @property
     def is_loaded(self) -> bool:
@@ -97,13 +97,9 @@ class MLPredictor:
         cv_all_skills = cv_technical_skills + cv_soft_skills
         job_all_skills = job_technical_skills + job_soft_skills
 
-        # ── 1. Skills Matching ────────────────────────────────────────────────
-        # ✅ IDENTIQUE au dataset : seuils 65 / 40
         THRESHOLD_STRICT = 65
         THRESHOLD_MODERATE = 40
 
-        # ── 2. ✅ FIX PRINCIPAL : recalculer les similarités SKILL PAR SKILL
-        #        exactement comme dans compute_features_from_huggingface.py
         if len(cv_all_skills) > 0 and len(job_all_skills) > 0:
             cv_embs = sentence_model.encode([s.lower() for s in cv_all_skills],  show_progress_bar=False)
             job_embs = sentence_model.encode([s.lower() for s in job_all_skills], show_progress_bar=False)
@@ -115,13 +111,11 @@ class MLPredictor:
             for i, job_skill in enumerate(job_all_skills):
                 best_sim = 0.0
 
-                # Exact match en premier
                 for cv_skill in cv_all_skills:
                     if cv_skill.lower() == job_skill.lower():
                         best_sim = 100.0
                         break
 
-                # Sinon similarité cosine * 100 (→ 0-100 comme dataset)
                 if best_sim < 100.0:
                     sims = cosine_similarity([job_embs[i]], cv_embs)[0] * 100
                     best_sim = float(np.max(sims))
@@ -134,7 +128,6 @@ class MLPredictor:
             sim_array = np.array(similarities)
             n_job = len(job_all_skills)
 
-            # ✅ IDENTIQUE au dataset
             coverage = (nb_covered_skills / n_job) * 100
             covered_sims = [s for s in similarities if s >= THRESHOLD_STRICT]
             quality = float(np.mean(covered_sims)) if covered_sims else 0.0
@@ -148,12 +141,10 @@ class MLPredictor:
             top3_similarity_avg = float(np.mean(top3))
 
         else:
-            # Cas vide
             coverage = quality = skills_ratio = 0.0
             nb_covered_skills = nb_missing_skills = 0
             similarity_mean = similarity_max = similarity_std = top3_similarity_avg = 0.0
 
-        # ── 3. TF-IDF ─────────────────────────────────────────────────────────
         try:
             tfidf = TfidfVectorizer(max_features=500, stop_words='english')
             tfidf.fit([cv_raw_text, job_raw_text])
@@ -164,7 +155,6 @@ class MLPredictor:
         except Exception:
             tfidf_similarity = 0.0
 
-        # ── 4. Embedding ──────────────────────────────────────────────────────
         try:
             embeddings = sentence_model.encode(
                 [cv_raw_text, job_raw_text], show_progress_bar=False
@@ -175,17 +165,14 @@ class MLPredictor:
         except Exception:
             embedding_similarity = 0.0
 
-        # ── 5. Contexte ───────────────────────────────────────────────────────
         nb_resume_technical = len(cv_technical_skills)
         nb_resume_soft = len(cv_soft_skills)
         nb_job_technical = len(job_technical_skills)
         nb_job_soft = len(job_soft_skills)
 
-        # ── 6. Features textuelles ────────────────────────────────────────────
         resume_feats = _compute_text_features(cv_raw_text,  'resume')
         job_feats = _compute_text_features(job_raw_text, 'job_description')
 
-        # ── 7. Assembler les 27 features ──────────────────────────────────────
         result = {
             'coverage':             coverage,
             'quality':              quality,
@@ -206,8 +193,7 @@ class MLPredictor:
         result.update(resume_feats)
         result.update(job_feats)
 
-        # Debug temporaire
-        logger.warning(f"🔍 DEBUG : coverage={coverage:.1f} | quality={quality:.1f} | sim_mean={similarity_mean:.1f} | sim_max={similarity_max:.1f}")
+        logger.warning(f"DEBUG : coverage={coverage:.1f} | quality={quality:.1f} | sim_mean={similarity_mean:.1f} | sim_max={similarity_max:.1f}")
 
         return result
 
@@ -239,7 +225,7 @@ class MLPredictor:
             }
 
         except Exception as e:
-            logger.error(f"❌ Erreur prédiction ML : {e}")
+            logger.error(f"Erreur prédiction ML : {e}")
             return {
                 'ml_label': 'N/A',
                 'ml_score': None,

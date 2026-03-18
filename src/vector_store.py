@@ -30,11 +30,10 @@ class JobVectorStore:
         self.model = SentenceTransformer(model_name)
         self.dimension = self.model.get_sentence_embedding_dimension()
         self.index = None
-        # Metadata des offres (title, company, description, etc.)
         self.jobs_metadata = []
 
         print(
-            f"✅ JobVectorStore initialisé avec {model_name} ({self.dimension} dimensions)")
+            f" JobVectorStore initialisé avec {model_name} ({self.dimension} dimensions)")
 
     def build_index(self, jobs: List[Dict], index_type: str = 'flat') -> None:
         """
@@ -47,55 +46,46 @@ class JobVectorStore:
         if not jobs:
             raise ValueError("La liste d'offres est vide")
 
-        print(f"\n🔨 Construction de l'index FAISS...")
+        print(f"\n Construction de l'index FAISS...")
         print(f"   Nombre d'offres : {len(jobs)}")
         print(f"   Type d'index : {index_type}")
 
-        # Créer les textes pour embedding (titre + description + requirements)
         job_texts = []
         for job in jobs:
             text = f"{job['title']} {job['description']}"
 
-            # Ajouter les requirements si présents
             if 'requirements' in job and job['requirements']:
                 text += " " + " ".join(job['requirements'])
 
-            # Ajouter les nice_to_have si présents
             if 'nice_to_have' in job and job['nice_to_have']:
                 text += " " + " ".join(job['nice_to_have'])
 
             job_texts.append(text)
 
-        # Générer les embeddings
         print(f"   Génération des embeddings...")
         embeddings = self.model.encode(
             job_texts,
             show_progress_bar=False,
             convert_to_numpy=True,
-            normalize_embeddings=True  # Important pour la similarité cosinus
+            normalize_embeddings=True 
         )
 
-        # Créer l'index FAISS
         if index_type == 'flat':
-            # Index exact (plus lent mais précis)
-            # Inner Product (cosine avec normalisation)
+
             self.index = faiss.IndexFlatIP(self.dimension)
         elif index_type == 'ivf':
-            # Index approximatif (plus rapide mais légèrement moins précis)
-            nlist = min(100, len(jobs) // 10)  # Nombre de clusters
+            nlist = min(100, len(jobs) // 10) 
             quantizer = faiss.IndexFlatIP(self.dimension)
             self.index = faiss.IndexIVFFlat(quantizer, self.dimension, nlist)
             self.index.train(embeddings.astype('float32'))
         else:
             raise ValueError(f"Type d'index non supporté : {index_type}")
 
-        # Ajouter les embeddings à l'index
         self.index.add(embeddings.astype('float32'))
 
-        # Sauvegarder les metadata
         self.jobs_metadata = jobs
 
-        print(f"✅ Index construit avec succès !")
+        print(f" Index construit avec succès !")
         print(f"   Total d'offres indexées : {self.index.ntotal}")
 
     def search(
@@ -122,32 +112,24 @@ class JobVectorStore:
         if not cv_skills:
             raise ValueError("La liste de compétences est vide")
 
-        # Créer le texte de requête
         query_text = " ".join(cv_skills)
         if cv_text:
-            query_text += " " + cv_text[:500]  # Limiter à 500 caractères
-
-        # Générer l'embedding de la requête
+            query_text += " " + cv_text[:500] 
         query_embedding = self.model.encode(
             [query_text],
             convert_to_numpy=True,
             normalize_embeddings=True
         )
 
-        # Recherche dans FAISS
-        # Limiter au nombre d'offres disponibles
         top_k = min(top_k, self.index.ntotal)
         scores, indices = self.index.search(
             query_embedding.astype('float32'), top_k)
 
-        # Formater les résultats
         results = []
         for i, idx in enumerate(indices[0]):
             job = self.jobs_metadata[idx]
-            # Score de similarité (0-1 avec normalisation)
             similarity_score = float(scores[0][i])
 
-            # Convertir en pourcentage
             similarity_percentage = similarity_score * 100
 
             results.append((job, similarity_percentage))
@@ -166,14 +148,11 @@ class JobVectorStore:
             raise ValueError(
                 "Aucun index à sauvegarder. Appelez build_index() d'abord.")
 
-        # Créer les dossiers si nécessaire
         Path(index_path).parent.mkdir(parents=True, exist_ok=True)
         Path(metadata_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # Sauvegarder l'index FAISS
         faiss.write_index(self.index, index_path)
 
-        # Sauvegarder les metadata
         with open(metadata_path, 'wb') as f:
             pickle.dump({
                 'jobs_metadata': self.jobs_metadata,
@@ -181,8 +160,8 @@ class JobVectorStore:
                 'dimension': self.dimension
             }, f)
 
-        print(f"✅ Index sauvegardé : {index_path}")
-        print(f"✅ Metadata sauvegardées : {metadata_path}")
+        print(f" Index sauvegardé : {index_path}")
+        print(f" Metadata sauvegardées : {metadata_path}")
 
     def load(self, index_path: str, metadata_path: str) -> None:
         """
@@ -198,22 +177,19 @@ class JobVectorStore:
         if not Path(metadata_path).exists():
             raise FileNotFoundError(f"Metadata introuvables : {metadata_path}")
 
-        # Charger l'index FAISS
         self.index = faiss.read_index(index_path)
 
-        # Charger les metadata
         with open(metadata_path, 'rb') as f:
             data = pickle.load(f)
             self.jobs_metadata = data['jobs_metadata']
 
-            # Vérifier la compatibilité du modèle
             if data['model_name'] != self.model_name:
-                print(f"⚠️  Attention : modèle différent")
+                print(f"  Attention : modèle différent")
                 print(f"   Index créé avec : {data['model_name']}")
                 print(f"   Modèle actuel : {self.model_name}")
 
-        print(f"✅ Index chargé : {self.index.ntotal} offres")
-        print(f"✅ Metadata chargées : {len(self.jobs_metadata)} offres")
+        print(f" Index chargé : {self.index.ntotal} offres")
+        print(f" Metadata chargées : {len(self.jobs_metadata)} offres")
 
     def get_stats(self) -> Dict:
         """
@@ -255,25 +231,22 @@ class JobVectorStore:
             if not job.get("description"):
                 return False
 
-            # Créer un embedding pour ce job
             embedding = self.model.encode([job["description"]])[0]
 
-            # Ajouter à l'index FAISS
             self.index.add(embedding.reshape(1, -1))
 
-            # Ajouter les métadonnées
             self.jobs_metadata.append(job)
 
-            logger.info(f"✅ Job ajouté à FAISS : {job.get('title', 'unknown')}")
+            logger.info(f" Job ajouté à FAISS : {job.get('title', 'unknown')}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Erreur ajout job à FAISS : {e}")
+            logger.error(f" Erreur ajout job à FAISS : {e}")
             return False
 
 
 # ─────────────────────────────────────────
-# Singleton pour VectorStore (HORS de la classe)
+# Singleton pour VectorStore
 # ─────────────────────────────────────────
 
 _vector_store_instance: Optional[JobVectorStore] = None
@@ -288,15 +261,14 @@ def get_vector_store() -> JobVectorStore:
         logger = logging.getLogger(__name__)
         _vector_store_instance = JobVectorStore()
 
-        # Charger les jobs existants
         try:
             with open(JOB_DATA_PATH, 'r') as f:
                 jobs_data = json.load(f)
                 jobs = jobs_data.get("jobs", [])
                 if jobs:
                     _vector_store_instance.build_index(jobs)
-                    logger.info(f"✅ {len(jobs)} jobs chargés dans FAISS")
+                    logger.info(f"{len(jobs)} jobs chargés dans FAISS")
         except Exception as e:
-            logger.warning(f"⚠️ Impossible de charger les jobs dans FAISS: {e}")
+            logger.warning(f" Impossible de charger les jobs dans FAISS: {e}")
 
     return _vector_store_instance

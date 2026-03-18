@@ -30,7 +30,7 @@ class JobScraper:
             "X-RapidAPI-Key": self.api_key,
             "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
         }
-        logger.info("✅ JobScraper initialisé")
+        logger.info("JobScraper initialisé")
 
     def search_jobs(
         self,
@@ -69,7 +69,7 @@ class JobScraper:
             params["remote_jobs_only"] = "true"
 
         try:
-            logger.info(f"🔍 Recherche JSearch : '{query}' à '{location}'")
+            logger.info(f"Recherche JSearch : '{query}' à '{location}'")
             response = requests.get(
                 f"{JSEARCH_BASE_URL}/search",
                 headers=self.headers,
@@ -80,18 +80,18 @@ class JobScraper:
             data = response.json()
 
             raw_jobs = data.get("data", [])
-            logger.info(f"📥 {len(raw_jobs)} offres reçues de JSearch")
+            logger.info(f"{len(raw_jobs)} offres reçues de JSearch")
 
             return [self._normalize_job(job) for job in raw_jobs]
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429:
-                logger.error("❌ Quota JSearch dépassé (200 req/mois sur tier gratuit)")
+                logger.error("Quota JSearch dépassé (200 req/mois sur tier gratuit)")
             else:
-                logger.error(f"❌ Erreur HTTP JSearch : {e}")
+                logger.error(f"Erreur HTTP JSearch : {e}")
             raise
         except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Erreur réseau JSearch : {e}")
+            logger.error(f"Erreur réseau JSearch : {e}")
             raise
 
     def _normalize_job(self, raw: Dict) -> Dict:
@@ -155,10 +155,8 @@ class JobScraper:
             return self._normalize_job(jobs[0]) if jobs else None
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"❌ Erreur get_job_details : {e}")
+            logger.error(f"Erreur get_job_details : {e}")
             return None
-
-# les méthodes de sauvegarde dans PostgreSQL et FAISS
 
     def search_and_save(
         self,
@@ -172,33 +170,30 @@ class JobScraper:
         Scraper + sauvegarder en PostgreSQL + indexer dans FAISS
         Retourne un résumé des opérations
         """
-        # ── 1. Scraper ──────────────────────────────────────────────────────
         jobs = self.search_jobs(query=query, location=location, num_pages=num_pages)
 
         saved_db = 0
         saved_faiss = 0
         errors = []
 
-        # ── 2. Sauvegarder dans PostgreSQL ──────────────────────────────────
         if save_to_db and jobs:
             try:
                 from src.database import get_db_manager
                 db = get_db_manager()
                 saved_db = self._save_jobs_to_db(db, jobs)
-                logger.info(f"💾 {saved_db} jobs sauvegardés en DB")
+                logger.info(f"{saved_db} jobs sauvegardés en DB")
             except Exception as e:
-                logger.error(f"❌ Erreur sauvegarde DB : {e}")
+                logger.error(f"Erreur sauvegarde DB : {e}")
                 errors.append(f"DB: {str(e)}")
 
-        # ── 3. Indexer dans FAISS ────────────────────────────────────────────
         if save_to_faiss and jobs:
             try:
                 from src.vector_store import get_vector_store
                 vs = get_vector_store()
                 saved_faiss = self._save_jobs_to_faiss(vs, jobs)
-                logger.info(f"🔍 {saved_faiss} jobs indexés dans FAISS")
+                logger.info(f"{saved_faiss} jobs indexés dans FAISS")
             except Exception as e:
-                logger.error(f"❌ Erreur indexation FAISS : {e}")
+                logger.error(f"Erreur indexation FAISS : {e}")
                 errors.append(f"FAISS: {str(e)}")
 
         return {
@@ -233,7 +228,7 @@ class JobScraper:
                 db.conn.commit()
                 saved += 1
             except Exception as e:
-                logger.warning(f"⚠️ Job ignoré ({job.get('job_id')}) : {e}")
+                logger.warning(f"Job ignoré ({job.get('job_id')}) : {e}")
                 db.conn.rollback()
         return saved
 
@@ -243,11 +238,10 @@ class JobScraper:
         for job in jobs:
             try:
                 if job.get("description"):
-                    # Si ton vector_store a une méthode add_job
-                    vs.add_job(job)  # ou vs.add_jobs([job])
+                    vs.add_job(job)  
                     saved += 1
             except Exception as e:
-                logger.warning(f"⚠️ Job non indexé ({job.get('job_id')}) : {e}")
+                logger.warning(f"Job non indexé ({job.get('job_id')}) : {e}")
         return saved
 
 

@@ -1,11 +1,9 @@
-/* 1. Fond de page bleu ciel avec motif (Dot Grid stylisé) */
 .stApp {
-    background-color: #e0f2fe; /* Bleu ciel très clair */
+    background-color: #e0f2fe; 
     background-image: radial-gradient(#bae6fd 2px, transparent 2px);
     background-size: 30px 30px;
 }
 
-/* 2. Titre principal chargé, animé et texturé */
 .main-header { 
     font-size: 3.8rem; 
     font-weight: 900; 
@@ -15,11 +13,10 @@
     -webkit-background-clip: text; 
     -webkit-text-fill-color: transparent; 
     margin-bottom: 0.5rem; 
-    text-shadow: 3px 3px 6px rgba(0,0,0,0.15); /* Ombre douce 3D */
-    animation: gradient-shift 6s ease infinite; /* Animation du fond fluide */
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.15);
+    animation: gradient-shift 6s ease infinite; 
 }
 
-/* Animation pour le dégradé du titre */
 @keyframes gradient-shift {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
@@ -35,7 +32,6 @@
     text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
 }
 
-/* 3. Boutons "Bombés" (Effet Neumorphisme / 3D web moderne) */
 div.stButton > button:first-child { 
     border-radius: 30px; 
     border: 1px solid rgba(255, 255, 255, 0.5);
@@ -47,20 +43,17 @@ div.stButton > button:first-child {
     transition: all 0.2s ease; 
 }
 
-/* Effet Hover (Survol) : le bouton se soulève */
 div.stButton > button:first-child:hover { 
     transform: translateY(-3px); 
     box-shadow: 8px 8px 15px rgba(0,0,0,0.15), -8px -8px 15px rgba(255,255,255,1); 
     background: linear-gradient(145deg, #f0f7ff, #ffffff);
 }
 
-/* Effet Click : le bouton s'enfonce */
 div.stButton > button:first-child:active { 
     transform: translateY(1px); 
     box-shadow: inset 5px 5px 10px rgba(0,0,0,0.1), inset -5px -5px 10px rgba(255,255,255,0.8); 
 }
 
-/* Boutons spécifiquement Primaire (Bouton d'Analyse) avec un style bleu percutant */
 div.stButton > button[kind="primary"] {
     background: linear-gradient(145deg, #2563eb, #1d4ed8);
     color: white;
@@ -78,18 +71,15 @@ div.stButton > button[kind="primary"]:active {
     box-shadow: inset 4px 4px 10px rgba(0,0,0,0.3); 
 }
 
-/* Badges Sources redessinés */
 .source-local   { background:#e3f2fd; color:#1565c0; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #bbdefb; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
 .source-scraped { background:#e8f5e9; color:#2e7d32; padding:4px 10px; border-radius:15px; font-size:.8rem; font-weight:700; border: 1px solid #c8e6c9; box-shadow: 1px 1px 3px rgba(0,0,0,0.05); }
 
-/* Scores avec dégradés et ombres */
 .score-badge { display:inline-block; padding:.4rem 1.2rem; border-radius:25px; font-weight:800; font-size:1.2rem; box-shadow: 0 4px 8px rgba(0,0,0,0.15); border: 2px solid rgba(255,255,255,0.5); }
 .score-excellent { background: linear-gradient(135deg, #4CAF50, #81C784); color:white; }
 .score-good      { background: linear-gradient(135deg, #FFC107, #FFD54F); color:#333; }
 .score-medium    { background: linear-gradient(135deg, #FF9800, #FFB74D); color:white; }
 .score-low       { background: linear-gradient(135deg, #9E9E9E, #E0E0E0); color:white; }
 
-/* Accentuation et ombrage 3D des chiffres fixes (Metrics) */
 div[data-testid="stMetricValue"] { 
     color: #1e3a8a; 
     font-weight: 900; 
@@ -97,7 +87,6 @@ div[data-testid="stMetricValue"] {
     text-shadow: 2px 2px 4px rgba(0,0,0,0.15);
 }
 
-/* Footer style (déplacé depuis app.py) */
 .footer {
     text-align: center;
     color: #888;

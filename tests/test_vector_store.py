@@ -8,7 +8,6 @@ import tempfile
 import os
 
 
-# Marquer tout le fichier comme test d'intégration (ignoré en CI)
 pytestmark = pytest.mark.integration
 
 MOCK_JOBS = [
@@ -192,7 +191,6 @@ class TestSaveLoad:
             assert os.path.exists(index_path)
             assert os.path.exists(meta_path)
 
-            # Recréer et charger
             with patch('sentence_transformers.SentenceTransformer') as mock_st2:
                 mock_model2 = MagicMock()
                 mock_model2.get_sentence_embedding_dimension.return_value = 64
@@ -214,7 +212,6 @@ class TestSaveLoad:
     def test_load_missing_metadata_raises(self, vector_store):
         with tempfile.TemporaryDirectory() as tmpdir:
             index_path = os.path.join(tmpdir, "test.index")
-            # Créer uniquement l'index, pas les metadata
             vector_store.build_index(MOCK_JOBS)
             import faiss
             faiss.write_index(vector_store.index, index_path)
