@@ -2,97 +2,116 @@
 [![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-310/)
 [![Tests](https://img.shields.io/badge/tests-168%20passed-brightgreen.svg)]()
 
-# AI Career Coach - Système Intelligent de Matching CV ↔ Offres d'Emploi
+# 🚀 AI Career Coach - Système Intelligent de Matching CV ↔ Offres d'Emploi
 
-## Description du Projet
+## 📖 Description du Projet
 
-AI Career Coach est un système intelligent d'aide à l'emploi destiné aux profils juniors (Data Science et ML Engineering). Le projet combine NLP, embeddings sémantiques, machine learning et recherche vectorielle afin de proposer des recommandations d'offres personnalisées basées sur l'analyse automatique d'un CV.
+**AI Career Coach** est un système intelligent d'aide à l'emploi destiné aux **profils juniors en Data Science et ML Engineering**. Le projet combine **NLP**, **embeddings sémantiques**, **machine learning** et **recherche vectorielle** pour proposer des recommandations d'emploi personnalisées basées sur l'analyse automatique de CV.
 
-### Objectifs Principaux
+### 🎯 Objectifs Principaux
 
-1. Extraction automatique des compétences techniques et soft skills depuis un CV PDF
-2. Matching sémantique entre profil candidat et offres d'emploi (dataset local + offres scrapées)
-3. Scoring intelligent basé sur la couverture et la qualité sémantique
-4. Recommandations personnalisées avec explication des forces et faiblesses
-5. Simulation d'entretiens avec génération de questions contextuelles et évaluation de réponses
-6. Pipeline MLOps avec tracking MLflow et enregistrement de modèle
+1. **Extraction automatique** des compétences techniques et soft skills depuis un CV PDF
+2. **Matching sémantique** entre profil candidat et offres d'emploi
+3. **Scoring intelligent** basé sur la couverture et la qualité des compétences
+4. **Recommandations personnalisées** avec explication des forces et faiblesses
+5. **Simulation d'entretiens** avec génération de questions contextuelles
+6. **MLOps pipeline** avec tracking des expériences et déploiement de modèles
 
-## Structure du projet
+## 📁 Structure du projet
 
 ```
 AI_Career_Coach/
-|-- app.py                              # Frontend Streamlit
-|-- pages/                              # Pages Streamlit
-|   |-- 1_Interview_Simulator.py
-|   |-- 2_Monitoring.py
-|   |-- styles.css
-|
-|-- src/                                # Logique métier + API
-|   |-- api.py                          # FastAPI (endpoints REST)
-|   |-- compute_features_from_huggingface.py  # Features ML (dataset HF)
-|   |-- cv_parser.py                    # Parsing PDF
-|   |-- skills_extractor.py             # Extraction skills (spaCy + regex)
-|   |-- job_matcher.py                  # Matching sémantique + scoring
-|   |-- vector_store.py                 # FAISS (optionnel)
-|   |-- ml_predictor.py                 # Features + prédiction XGBoost
-|   |-- interview_simulator.py          # Interview simulator (Groq)
-|   |-- job_scraper.py                  # Scraping (JSearch)
-|   |-- database.py                     # PostgreSQL
-|   |-- scheduler.py                    # Scrape planifié + sync
-|
-|-- data/
-|   |-- skills_reference.json           # Référentiel skills + variations
-|   |-- jobs/
-|   |   |-- jobs_dataset.json           # Dataset jobs local
-|   |-- resume_fit_job/
-|       |-- raw/
-|       |   |-- huggingface_resume_job_fit_RAW.xlsx
-|       |-- processed/
-|           |-- dataset_resume_job_fit_processed_v2.xlsx
-|           |-- v2_dataset_resume_job_fit_processed.xlsx
-|
-|-- db/
-|   |-- init/
-|       |-- init_db.sql                 # Schéma Postgres
-|
-|-- docker/
-|   |-- api.Dockerfile
-|   |-- streamlit.Dockerfile
-|-- docker-compose.yml
-|
-|-- mlops/
-|   |-- train_and_log.py                # Entraînement + MLflow
-|   |-- register_model.py               # Model Registry
-|   |-- load_model.py
-|
-|-- models/
-|   |-- classifier_clean_metadata.json
-|   |-- features.txt
-|   |-- job-matcher-classifier/
-|       |-- artifacts/
-|           |-- features.txt
-|           |-- metadata.json
-|
-|-- notebooks/                          # Notebooks d'exploration / dev
-|-- requirements/
-|   |-- base.txt
-|   |-- api.txt
-|   |-- frontend.txt
-|
-|-- tests/
-|
-|-- .github/workflows/ci.yml            # CI/CD
-|-- .streamlit/config.toml              # Config Streamlit
-|-- .env.example
-|-- .dockerignore
-|-- .gitignore
-|-- .flake8
-|-- pytest.ini
+│
+├── app.py                                # Frontend Streamlit
+│
+├── 📁 pages/                              # Pages Streamlit
+│   ├── 1_Interview_Simulator.py
+│   ├── 2_Monitoring.py
+│   └── styles.css
+│
+├── 📁 src/                                # Logique métier + API
+│   ├── api.py                             # FastAPI (endpoints REST)
+│   ├── compute_features_from_huggingface.py  # Features ML (dataset HF)
+│   ├── cv_parser.py                       # Parsing PDF
+│   ├── skills_extractor.py                # Extraction skills (spaCy + regex)
+│   ├── job_matcher.py                     # Matching sémantique + scoring
+│   ├── vector_store.py                    # FAISS (optionnel)
+│   ├── ml_predictor.py                    # Features + prédiction XGBoost
+│   ├── interview_simulator.py             # Interview simulator (Groq)
+│   ├── job_scraper.py                     # Scraping (JSearch)
+│   ├── database.py                        # PostgreSQL
+│   └── scheduler.py                       # Scrape planifié + sync
+│
+├── 📁 data/
+│   ├── skills_reference.json              # Référentiel skills + variations
+│   ├── 📁 jobs/
+│   │   └── jobs_dataset.json              # Dataset jobs local
+│   └── 📁 resume_fit_job/
+│       ├── 📁 raw/
+│       │   └── huggingface_resume_job_fit_RAW.xlsx
+│       └── 📁 processed/
+│           └── dataset_resume_job_fit_processed_v2.xlsx
+│           
+├── 📁 db/
+│   └── 📁 init/
+│       └── init_db.sql                    # Schéma Postgres
+│
+├── 📁 docker/
+│   ├── api.Dockerfile
+│   └── streamlit.Dockerfile
+│
+├── docker-compose.yml
+│
+├── 📁 mlops/
+│   ├── train_and_log.py                   # Entraînement + MLflow
+│   ├── register_model.py                  # Model Registry
+│   └── load_model.py
+│
+├── 📁 models/
+│   ├── classifier_clean_metadata.json
+│   ├── features.txt
+│   └── 📁 job-matcher-classifier/
+│       └── 📁 artifacts/
+│           ├── features.txt
+│           └── metadata.json
+│
+├── 📁 notebooks/                          # Notebooks d'exploration / dev
+│
+├── 📁 requirements/
+│   ├── base.txt
+│   ├── api.txt
+│   └── frontend.txt
+│
+├── 📁 tests/
+│
+├── .github/workflows/ci.yml               # CI/CD
+├── .streamlit/config.toml                 # Config Streamlit
+├── .env.example
+├── .dockerignore
+├── .gitignore
+├── .flake8
+└── pytest.ini
 ```
 
-## Quick Start
+## 👨‍💻 Interfaces
 
-### Option 1 : Démarrage avec Docker (Recommandé)
+Accès à la page d'accueil Streamlit :
+
+![alt text](data/screenshots/image.png)
+
+Résultats classement offres après analyse du CV :
+
+![alt text](data/screenshots/image1.png)
+
+Accès à la page simulation d'entretien :
+
+![alt text](data/screenshots/image2.png)
+
+Accès à la page monitoring :
+
+![alt text](data/screenshots/image3.png)
+
+## 🚀 Quick Start
 
 Prérequis : Docker + Docker Compose.
 
@@ -134,31 +153,7 @@ docker compose down           # arrêter sans supprimer les données
 docker compose down -v        # arrêter et supprimer les volumes (reset complet)
 ```
 
-### Option 2 : Démarrage en local (Développement)
-
-```bash
-# 1. Créer l'environnement virtuel
-python -m venv .venv
-source .venv/bin/activate
-
-# 2. Installer les dépendances
-pip install -r requirements/base.txt -r requirements/api.txt -r requirements/frontend.txt
-
-# 3. Télécharger un modèle spaCy
-python -m spacy download en_core_web_sm
-# optionnel (FR) : python -m spacy download fr_core_news_lg
-
-# 4. Configurer les variables d'environnement
-cp .env.example .env
-
-# 5. Lancer l'API
-uvicorn src.api:app --reload --port 8000
-
-# 6. Lancer Streamlit (dans un autre terminal)
-streamlit run app.py
-```
-
-## Architecture du Système
+## 🐳 Architecture du Système
 
 ### Architecture Docker (6 services)
 
@@ -166,151 +161,127 @@ Le déploiement Docker orchestre 6 services : PostgreSQL, MLflow, API, Streamlit
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     UTILISATEUR / NAVIGATEUR                     │
+│                     UTILISATEUR / NAVIGATEUR                    │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ↓
-        ┌─────────────────────────────────────────┐
-        │     STREAMLIT FRONTEND (Port 8501)      │
-        │     • Upload CV                         │
-        │     • Recommandations                   │
-        │     • Simulation d'entretiens           │
-        │     • Monitoring                        │
-        └─────────────────────────────────────────┘
-                              │
-                              ↓ HTTP
-        ┌─────────────────────────────────────────┐
-        │     FASTAPI BACKEND (Port 8000)         │
-        │     • Extraction skills                 │
-        │     • Matching + scoring                │
-        │     • ML predict                        │
-        │     • Scrape + sync jobs                │
-        └─────────────────────────────────────────┘
-                              │
-                ┌─────────────┼─────────────┬─────────────┐
-                ↓             ↓             ↓             ↓
+                                  │
+                                  ↓
+              ┌─────────────────────────────────────────┐
+              │     STREAMLIT FRONTEND (Port 8501)      │
+              │     • Upload CV                         │
+              │     • Recommandations                   │
+              │     • Simulation d'entretiens           │
+              │     • Monitoring                        │
+              └─────────────────────────────────────────┘
+                                  │
+                                  ↓ HTTP
+              ┌─────────────────────────────────────────┐
+              │     FASTAPI BACKEND (Port 8000)         │
+              │     • Extraction skills                 │
+              │     • Matching + scoring                │
+              │     • ML predict                        │
+              │     • Scrape + sync jobs                │
+              └─────────────────────────────────────────┘
+                                  │
+              ┌───────────────────┼────────────────┬───────────────────┐
+              ↓                   ↓                ↓                   ↓
     ┌───────────────────┐  ┌──────────────┐ ┌──────────────┐ ┌───────────────────┐
-    │ POSTGRESQL (5432)  │  │ MLFLOW (5000)│ │ GRAFANA (3000)│ │ SCHEDULER         │
-    │ • logs + jobs      │  │ • runs       │ │ • dashboards  │ │ • scrape quotidien │
+    │ POSTGRESQL (5432) │  │ MLFLOW (5000)│ │GRAFANA (3000)│ │ SCHEDULER         │
+    │ • logs + jobs     │  │ • runs       │ │ • dashboards │ │ • scrape quotidien│
     └───────────────────┘  └──────────────┘ └──────────────┘ └───────────────────┘
 ```
 
-### Endpoints API Disponibles
-
-Ces endpoints correspondent à l'implémentation actuelle dans `src/api.py`.
-
-| Méthode | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Statut de l'API |
-| GET | `/api/v1/stats` | Statistiques globales (jobs, skills) |
-| POST | `/api/v1/extract-skills` | Extraire compétences d'un CV PDF |
-| POST | `/api/v1/recommend-jobs` | Recommander des jobs (top_n / min_score) |
-| GET | `/api/v1/jobs` | Lister tous les jobs (locaux + scrapés) |
-| GET | `/api/v1/jobs/{job_id}` | Détails d'un job |
-| POST | `/api/v1/simulate-interview` | Générer questions d'entretien |
-| POST | `/api/v1/evaluate-answer` | Évaluer une réponse |
-| GET | `/api/v1/scrape-jobs` | Scraping manuel via JSearch |
-| GET | `/api/v1/scraped-jobs` | Lire les jobs scrapés depuis Postgres |
-| POST | `/api/v1/sync-jobs` | Recharger DB → exporter JSON + rebuild FAISS |
-| POST | `/api/v1/ml-predict` | Prédiction ML (XGBoost) |
-| GET | `/api/v1/faiss-stats` | Statistiques FAISS |
-| GET | `/api/v1/monitoring-data` | Données DB pour le monitoring |
-
-## Pipeline de Matching CV ↔ Jobs
+## ⚙️ Pipeline fonctionnel
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  1. UPLOAD CV (Streamlit)                                       │
-│     • Utilisateur upload CV PDF via interface                   │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  2. PARSING (src/cv_parser.py)                                  │
-│     • Extraction texte via pdfplumber                           │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  3. EXTRACTION SKILLS (src/skills_extractor.py)                 │
-│     • spaCy (en_core_web_sm / fr_core_news_lg)                  │
-│     • Keyword matching sur skills_reference.json                │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  4. PRÉ-FILTRAGE FAISS (src/vector_store.py) [OPTIONNEL]        │
-│     • Pré-sélection d'offres proches sémantiquement             │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  5. SCORING (src/job_matcher.py)                                │
-│     • overall_score = (coverage × 0.8) + (quality × 0.2)        │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  6. TRI & FILTRAGE (src/api.py)                                 │
-│     • Tri par score décroissant, min_score, top_n               │
-└─────────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────────┐
-│  7. AFFICHAGE (app.py)                                          │
-│     • Cards : score + compétences matchées/manquantes           │
-└─────────────────────────────────────────────────────────────────┘
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  1. UPLOAD CV (Streamlit)                                       │
+            │     • Utilisateur upload CV PDF via interface                   │
+            └─────────────────────────────────────────────────────────────────┘
+                                            ↓
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  2. PARSING (src/cv_parser.py)                                  │
+            │     • Extraction texte via pdfplumber                           │
+            └─────────────────────────────────────────────────────────────────┘
+                                            ↓
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  3. EXTRACTION SKILLS (src/skills_extractor.py)                 │
+            │     • spaCy (en_core_web_sm / fr_core_news_lg)                  │
+            │     • Keyword matching sur skills_reference.json                │
+            └─────────────────────────────────────────────────────────────────┘
+                                            ↓
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  4. PRÉ-FILTRAGE FAISS (src/vector_store.py) [OPTIONNEL]        │
+            │     • Pré-sélection d'offres proches sémantiquement             │
+            └─────────────────────────────────────────────────────────────────┘
+                                            ↓
+                ┌───────────────────────────┴────────────────────────────────┐
+                ↓                                                            ↓
+┌─────────────────────────────────────────────────┐  ┌───────────────────────────────────────────────────┐
+│ 5A. SCORING SÉMANTIQUE (src/job_matcher.py)     │  │ 5B. PRÉDICTION ML (src/ml_predictor.py)           │
+│ • Similarité cosinus (Sentence-Transformers)    │  │ • Inférence XGBoost                               │
+│ • score = (coverage × 0.8) + (quality × 0.2)    │  │ • Classe prédite : No Fit / Partial / Perfect     │
+└─────────────────────────────────────────────────┘  └───────────────────────────────────────────────────┘
+                └───────────────────────────┬────────────────────────────────┘
+                                            ↓
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  6. TRI & FILTRAGE (src/api.py)                                 │
+            │     • Tri par score décroissant, min_score, top_n               │
+            └─────────────────────────────────────────────────────────────────┘
+                                            ↓
+            ┌─────────────────────────────────────────────────────────────────┐
+            │  7. AFFICHAGE (app.py)                                          │
+            │     • Cards : score + compétences matchées/manquantes           │
+            └─────────────────────────────────────────────────────────────────┘
 ```
 
-## Tests et Validation
+- **coverage** = compétences requises de l’offre retrouvées dans le CV / compétences requises totales
+- **quality** = similarité cosinus moyenne des compétences matchées (embedding sémantique)
 
-### Tester l'API avec cURL
+## 🛠️ Technologies Utilisées
 
-```bash
-# 1. Extraction de compétences
-curl -X POST "http://localhost:8000/api/v1/extract-skills" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@data/My_CV.pdf"
+### **Backend**
+- **FastAPI** : API REST moderne et performante
+- **PostgreSQL** : Base de données relationnelle
 
-# 2. Recommandation de jobs (TOP 5)
-curl -X POST "http://localhost:8000/api/v1/recommend-jobs?top_n=5" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@data/My_CV.pdf"
+### **NLP & ML**
+- **spaCy** : Extraction de compétences (en_core_news_lg)
+- **SentenceTransformers** : Embeddings sémantiques (all-mpnet-base-v2)
+- **FAISS** : Recherche vectorielle ultra-rapide
+- **XGBoost** : Classification des matchs CV-Job
+- **Groq** : LLM pour simulation d'entretiens
 
-# 3. Simulation d'entretien
-curl -X POST "http://localhost:8000/api/v1/simulate-interview" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "job_id": "job_1",
-    "cv_skills": ["Python", "Machine Learning"],
-    "num_questions": 6
-  }'
-```
+### **MLOps**
+- **MLflow** : Tracking expériences + Model Registry
+- **Docker** : Containerisation
+- **Docker Compose** : Orchestration multi-conteneurs
+- **GitHub Actions** : CI (lint, tests, build)
 
-### Script de test complet
+### **Frontend**
+- **Streamlit** : Dashboard interactif
 
-Le script ci-dessous est optionnel et nécessite `jq`.
+### **Parsing PDF**
+- **pdfplumber** : Extraction texte 
 
-```bash
-cat > test_api.sh << 'EOF'
-#!/bin/bash
-set -e
+## 📊 Performances
 
-CV_PATH="data/My_CV.pdf"
+Ces métriques sont indicatives et dépendent des ressources machine et de l'utilisation de FAISS.
 
-echo "API health..."
-curl -s http://localhost:8000/health | jq .
+| Métrique | Valeur |
+|---|---|
+| Jobs disponibles | 25 offres (dataset local `data/jobs/jobs_dataset.json`) |
+| Jobs scrapés (JSearch) | Variable (dépend des requêtes, de `num_pages` et des résultats du moment) ; stockés en DB Postgres (table `scraped_jobs`) |
+| Skills trackés | 653 compétences techniques + 190 soft skills (`data/skills_reference.json`) |
+| Variations skills | 472 variations (mapping vers canonicals) |
+| Temps parsing CV | ~2–3 secondes |
+| Temps scraping (live_scrape) | Variable (réseau + API externe) ; peut dominer le temps total quand activé |
+| Temps matching | ~0.1 s / job (≈ 2.5 s pour 25 jobs, hors scraping) |
+| Temps total pipeline | ~7–10 secondes (parsing + extraction + matching + rendu UI) |
+| Temps total pipeline (avec scraping) | Variable ; dépend surtout du scraping, puis du matching sur (jobs locaux + jobs scrapés) |
+| Accuracy modèle ML | ~0.68–0.70 (selon version du modèle) |
+| Index FAISS / Embeddings | 768 dimensions (SentenceTransformer) |
+| Scheduler scraping | Exécution quotidienne (08:00) + synchronisation DB → FAISS via endpoint `/api/v1/sync-jobs` |
 
-echo "Stats..."
-curl -s http://localhost:8000/api/v1/stats | jq .
-
-echo "Recommendations (top 3)..."
-curl -s -X POST "http://localhost:8000/api/v1/recommend-jobs?top_n=3" \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@$CV_PATH" | jq .
-
-echo "Done"
-EOF
-
-chmod +x test_api.sh
-./test_api.sh
-```
-
-## Modèle ML Entraîné
+## 🤖 Modèle ML Entraîné
 
 ### Caractéristiques du Modèle
 
@@ -318,8 +289,7 @@ chmod +x test_api.sh
 - Classes : 3 (No Fit, Partial Fit, Perfect Fit)
 - Dataset :
   - Brut (HuggingFace) : `data/resume_fit_job/raw/huggingface_resume_job_fit_RAW.xlsx` (6,241 échantillons)
-  - Processed v1 : `data/resume_fit_job/processed/v2_dataset_resume_job_fit_processed.xlsx` (4,524 échantillons)
-  - Processed v2 (27 features) : `data/resume_fit_job/processed/dataset_resume_job_fit_processed_v2.xlsx` (6,241 échantillons)
+  - Processed (27 features) : `data/resume_fit_job/processed/dataset_resume_job_fit_processed_v2.xlsx`
 - Tracking : MLflow (runs + artifacts, via `MLFLOW_TRACKING_URI`)
 - Features : 27 (versionnées dans `models/job-matcher-classifier/artifacts/features.txt`)
 
@@ -375,51 +345,82 @@ python mlops/train_and_log.py
 python mlops/register_model.py
 ```
 
-## Technologies Utilisées
+## 🧪 Tests et Validation
 
-### Backend
+### Tester l'API avec cURL
 
-- FastAPI
-- PostgreSQL
+```bash
+# 1. Extraction de compétences
+curl -X POST "http://localhost:8000/api/v1/extract-skills" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/My_CV.pdf"
 
-### NLP & ML
+# 2. Recommandation de jobs (TOP 5)
+curl -X POST "http://localhost:8000/api/v1/recommend-jobs?top_n=5" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/My_CV.pdf"
 
-- spaCy (extraction skills)
-- SentenceTransformers (embeddings)
-- FAISS (vector search, optionnel)
-- XGBoost (classification)
-- Groq (LLM pour interview simulator)
+# 3. Simulation d'entretien
+curl -X POST "http://localhost:8000/api/v1/simulate-interview" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "job_id": "job_1",
+    "cv_skills": ["Python", "Machine Learning"],
+    "num_questions": 6
+  }'
+```
 
-### MLOps
+### Script de test complet
 
-- MLflow
-- Docker / Docker Compose
+Le script ci-dessous est optionnel et nécessite `jq`.
 
-### Frontend
+```bash
+cat > test_api.sh << 'EOF'
+#!/bin/bash
+set -e
 
-- Streamlit
+CV_PATH="data/My_CV.pdf"
 
-## Performances
+echo "API health..."
+curl -s http://localhost:8000/health | jq .
 
-Ces métriques sont indicatives et dépendent des ressources machine et de l'utilisation de FAISS.
+echo "Stats..."
+curl -s http://localhost:8000/api/v1/stats | jq .
 
-| Métrique | Valeur |
-|---|---|
-| Jobs disponibles | 25 offres (dataset local `data/jobs/jobs_dataset.json`) |
-| Jobs scrapés (JSearch) | Variable (dépend des requêtes, de `num_pages` et des résultats du moment) ; stockés en DB Postgres (table `scraped_jobs`) |
-| Skills trackés | 653 compétences techniques + 190 soft skills (`data/skills_reference.json`) |
-| Variations skills | 472 variations (mapping vers canonicals) |
-| Temps parsing CV | ~2–3 secondes |
-| Temps scraping (live_scrape) | Variable (réseau + API externe) ; peut dominer le temps total quand activé |
-| Temps matching | ~0.1 s / job (≈ 2.5 s pour 25 jobs, hors scraping) |
-| Temps total pipeline | ~7–10 secondes (parsing + extraction + matching + rendu UI) |
-| Temps total pipeline (avec scraping) | Variable ; dépend surtout du scraping, puis du matching sur (jobs locaux + jobs scrapés) |
-| Accuracy modèle ML | ~0.68–0.70 (selon version du modèle) |
-| Index FAISS / Embeddings | 768 dimensions (SentenceTransformer) |
-| Scheduler scraping | Exécution quotidienne (08:00) + synchronisation DB → FAISS via endpoint `/api/v1/sync-jobs` |
+echo "Recommendations (top 3)..."
+curl -s -X POST "http://localhost:8000/api/v1/recommend-jobs?top_n=3" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@$CV_PATH" | jq .
 
+echo "Done"
+EOF
 
-## URLs Clés (Mode Docker)
+chmod +x test_api.sh
+./test_api.sh
+```
+
+### 📡 Endpoints API Disponibles
+
+Ces endpoints correspondent à l'implémentation actuelle dans `src/api.py`.
+
+| Méthode | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Statut de l'API |
+| GET | `/api/v1/stats` | Statistiques globales (jobs, skills) |
+| POST | `/api/v1/extract-skills` | Extraire compétences d'un CV PDF |
+| POST | `/api/v1/recommend-jobs` | Recommander des jobs (top_n / min_score) |
+| GET | `/api/v1/jobs` | Lister tous les jobs (locaux + scrapés) |
+| GET | `/api/v1/jobs/{job_id}` | Détails d'un job |
+| POST | `/api/v1/simulate-interview` | Générer questions d'entretien |
+| POST | `/api/v1/evaluate-answer` | Évaluer une réponse |
+| GET | `/api/v1/scrape-jobs` | Scraping manuel via JSearch |
+| GET | `/api/v1/scraped-jobs` | Lire les jobs scrapés depuis Postgres |
+| POST | `/api/v1/sync-jobs` | Recharger DB → exporter JSON + rebuild FAISS |
+| POST | `/api/v1/ml-predict` | Prédiction ML (XGBoost) |
+| GET | `/api/v1/faiss-stats` | Statistiques FAISS |
+| GET | `/api/v1/monitoring-data` | Données DB pour le monitoring |
+
+## 🌐 URLs Clés (Mode Docker)
 
 | Service | URL | Description |
 |---|---|---|
@@ -430,7 +431,7 @@ Ces métriques sont indicatives et dépendent des ressources machine et de l'uti
 | Grafana | http://localhost:3000/d/ad95td9/monitoring-ai-career-coach?orgId=1&from=now-6h&to=now&timezone=browser | Dashboards |
 | PostgreSQL | localhost:5432 | Base de données (psql / client DB) |
 
-## CI/CD
+## 🤖 CI/CD
 
 Le pipeline GitHub Actions est défini dans `.github/workflows/ci.yml` et suit l'ordre : lint (flake8), tests (pytest), build Docker, puis déploiement conditionnel.
 
@@ -441,7 +442,7 @@ flake8 src/ tests/ --config=.flake8
 pytest -q
 ```
 
-## Variables d'environnement
+## ✅ Variables d'environnement
 
 Le template est dans `.env.example`.
 
@@ -452,3 +453,9 @@ Le template est dans `.env.example`.
 - `API_BASE_URL` : URL de l'API consommée par Streamlit (en Docker : `http://api:8000`)
 - `HF_TOKEN` : optionnel (Hugging Face)
 
+## 👥 Équipe
+
+Projet académique PFE — Télécom SudParis / Institut Polytechnique de Paris.
+
+- Robert UNG
+- Firiel AMDOUNI
