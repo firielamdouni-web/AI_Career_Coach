@@ -7,7 +7,8 @@ COPY requirements/ ./requirements/
 RUN python -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
     pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements/base.txt -r requirements/api.txt
+    pip install --no-cache-dir torch==2.3.1+cpu torchvision==0.18.1+cpu --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r requirements/base.txt -r requirements/api.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 # ============================================================================
 # RUNTIME
