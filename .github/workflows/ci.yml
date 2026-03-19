@@ -194,7 +194,7 @@ jobs:
         with:
           context: .
           file: ./docker/api.Dockerfile
-          push: true
+          outputs: type=registry,compression=zstd,force-compression=true
           tags: |
             ${{ env.DOCKER_USERNAME_CLEAN }}/ai-career-coach-api:latest
             ${{ env.DOCKER_USERNAME_CLEAN }}/ai-career-coach-api:${{ github.sha }}
@@ -208,7 +208,7 @@ jobs:
         with:
           context: .
           file: ./docker/streamlit.Dockerfile
-          push: true
+          outputs: type=registry,compression=zstd,force-compression=true
           tags: |
             ${{ env.DOCKER_USERNAME_CLEAN }}/ai-career-coach-streamlit:latest
             ${{ env.DOCKER_USERNAME_CLEAN }}/ai-career-coach-streamlit:${{ github.sha }}
