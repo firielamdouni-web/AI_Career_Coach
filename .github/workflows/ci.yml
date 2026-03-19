@@ -184,9 +184,7 @@ jobs:
           file: ./docker/api.Dockerfile
           push: true
           provenance: false
-          tags: |
-            ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:latest
-            ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:${{ github.sha }}
+          tags: ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:latest,${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -197,9 +195,7 @@ jobs:
           file: ./docker/streamlit.Dockerfile
           push: true
           provenance: false
-          tags: |
-            ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:latest
-            ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:${{ github.sha }}
+          tags: ${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:latest,${{ env.DOCKER_USERNAME_LOWER }}/ai-career-coach-streamlit:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
