@@ -28,11 +28,11 @@ services:
     restart: unless-stopped
     
     environment:
-      MLFLOW_BACKEND_STORE_URI: sqlite:////tmp/mlflow/mlruns.db  # ✅ CHANGÉ
-      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tmp/mlflow/artifacts  # ✅ CHANGÉ
+      MLFLOW_BACKEND_STORE_URI: sqlite:////tmp/mlflow/mlruns.db 
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: /tmp/mlflow/artifacts  
     
     volumes:
-      - mlflow_data:/tmp/mlflow  # ✅ CHANGÉ
+      - mlflow_data:/tmp/mlflow  
     
     ports:
       - "5000:5000"
@@ -73,11 +73,11 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      test: ["CMD", "curl", "-f", "--max-time", "30", "http://localhost:8000/health"]
+      interval: 60s
+      timeout: 35s
+      retries: 5
+      start_period: 180s
 
   streamlit:
     build:
@@ -86,7 +86,7 @@ services:
     container_name: pfe-streamlit
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_started 
     ports:
       - "8501:8501"
     volumes:
@@ -105,6 +105,42 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     restart: unless-stopped
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile   # même image que l'API
+    container_name: career_coach_scheduler
+    command: python -m src.scheduler
+    env_file: .env
+    depends_on:
+      - postgres
+      - api
+    restart: unless-stopped
+    networks:
+      - pfe-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]  
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: career_coach_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - pfe-network  
+    depends_on:
+      - postgres  
+    volumes:
+      - grafana_data:/var/lib/grafana
+
 networks:
   pfe-network:
     driver: bridge
@@ -113,4 +149,6 @@ volumes:
   postgres_data:
     driver: local
   mlflow_data:             
+    driver: local
+  grafana_data:
     driver: local

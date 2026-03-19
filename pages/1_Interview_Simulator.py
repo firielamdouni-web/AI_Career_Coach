@@ -1,5 +1,5 @@
 """
-🎤 Simulation d'Entretien Interactive
+Simulation d'Entretien Interactive
 Page Streamlit pour pratiquer les entretiens d'embauche avec IA
 """
 
@@ -183,62 +183,57 @@ st.markdown("""
 
 if not st.session_state.interview_started:
     st.markdown("---")
-    st.header("📋 Étape 1 : Sélectionnez un poste")
-    
-    # Vérifier si l'utilisateur a uploadé un CV
-    if 'cv_skills' not in st.session_state or not st.session_state.cv_skills:
-        st.warning("⚠️ Vous devez d'abord uploader votre CV sur la page principale")
+    st.header("📋 Étape 1 : Poste sélectionné")
+
+    # 1) Récupérer les skills depuis la page principale
+    cv_skills = (
+        st.session_state.get("cv_skills_for_interview")
+        or st.session_state.get("cv_skills")
+        or []
+    )
+    if not cv_skills:
+        st.warning("⚠️ Vous devez d'abord uploader/analyser votre CV sur la page principale")
         st.markdown("[👉 Retour à l'accueil](../)")
         st.stop()
-    
-    cv_skills = st.session_state.cv_skills
-    
-    st.success(f"✅ Compétences détectées : {len(cv_skills)}")
-    with st.expander("🔍 Voir vos compétences"):
+
+    # 2) Récupérer le job cliqué depuis la carte
+    selected_job_id = st.session_state.get("selected_job_for_interview")
+    if not selected_job_id:
+        st.warning("⚠️ Aucun poste sélectionné. Cliquez sur '🎤 Simuler un entretien' depuis une offre.")
+        st.markdown("[👉 Retour à l'accueil](../)")
+        st.stop()
+
+    # 3) Charger uniquement les détails du job choisi
+    job_details = get_job_details(selected_job_id)
+    if not job_details:
+        st.error("❌ Impossible de charger le poste sélectionné")
+        st.stop()
+
+    st.success(f"✅ Compétences techniques détectées : {len(cv_skills)}")
+    with st.expander("🔍 Voir vos compétences", expanded=False):
         st.markdown(", ".join(cv_skills[:20]))
-    
-    # Sélection du job
-    st.markdown("---")
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.subheader("🎯 Pour quel poste voulez-vous vous entraîner ?")
-        
-        # Récupérer la liste des jobs
-        try:
-            response = requests.get(f"{API_BASE_URL}/api/v1/jobs?limit=25")
-            if response.status_code == 200:
-                jobs = response.json()
-                
-                # Créer un dict {nom_affiché: job_id}
-                job_options = {
-                    f"{job['title']} - {job['company']} ({job['location']})": job['job_id']
-                    for job in jobs
-                }
-                
-                selected_job_display = st.selectbox(
-                    "Choisissez un poste",
-                    options=list(job_options.keys()),
-                    help="Sélectionnez le poste pour lequel vous souhaitez simuler un entretien"
-                )
-                
-                selected_job_id = job_options[selected_job_display]
-                
-                # Afficher les détails
-                job_details = get_job_details(selected_job_id)
-                if job_details:
-                    st.markdown(f"**📍 Localisation**: {job_details['location']}")
-                    st.markdown(f"**💼 Expérience**: {job_details['experience_required']}")
-                    st.markdown(f"**🏠 Remote**: {'Oui' if job_details['remote'] else 'Non'}")
-                
-            else:
-                st.error("❌ Impossible de charger les offres")
-                st.stop()
-        except Exception as e:
-            st.error(f"❌ Erreur: {str(e)}")
-            st.stop()
-    
-    with col2:
+
+    # Layout plus lisible : infos job à gauche, paramètres à droite
+    left, right = st.columns([2, 1], gap="large")
+
+    with left:
+        st.subheader("🎯 Poste choisi")
+        st.markdown(f"**{job_details.get('title', 'N/A')}** — {job_details.get('company', 'N/A')}")
+        st.markdown(f"**📍 Localisation** : {job_details.get('location', 'Non spécifié')}")
+        st.markdown(f"**💼 Expérience** : {job_details.get('experience_required', 'Non spécifié')}")
+        st.markdown(f"**🏠 Remote** : {'Oui' if job_details.get('remote', False) else 'Non'}")
+
+        # Bouton offre en ligne (si URL disponible)
+        job_url = (
+            job_details.get("url")
+            or job_details.get("job_url")
+            or job_details.get("apply_url")
+            or ""
+        )
+        if isinstance(job_url, str) and job_url.strip().startswith("http"):
+            st.link_button("🌐 Voir l’offre en ligne", job_url, use_container_width=False)
+
+    with right:
         st.markdown("### ⚙️ Paramètres")
         num_questions = st.slider(
             "Nombre de questions",
@@ -248,33 +243,18 @@ if not st.session_state.interview_started:
             step=2,
             help="Nombre total de questions (50% RH + 50% techniques)"
         )
-        
-        st.markdown("### 💡 Conseils")
-        st.markdown("""
-        - Prenez votre temps
-        - Donnez des exemples concrets
-        - Structurez vos réponses (STAR)
-        - Soyez authentique
-        """)
-    
-    # Bouton de démarrage
-    st.markdown("---")
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    with col2:
+
+        st.markdown("")
         if st.button("🚀 Démarrer la simulation", type="primary", use_container_width=True):
-            with st.spinner("⏳ Génération des questions avec Groq... (30-45 secondes)"):
+            with st.spinner("⏳ Génération des questions avec Groq..."):
                 result = generate_interview_questions(
                     cv_skills=cv_skills,
                     job_id=selected_job_id,
                     num_questions=num_questions
                 )
-                
+
                 if result:
-                    # Fusionner les questions
                     all_questions = result['rh_questions'] + result['technical_questions']
-                    
-                    # Sauvegarder dans session state
                     st.session_state.interview_started = True
                     st.session_state.questions = all_questions
                     st.session_state.job_title = result['job_title']
@@ -282,7 +262,6 @@ if not st.session_state.interview_started:
                     st.session_state.current_question_index = 0
                     st.session_state.answers = []
                     st.session_state.evaluations = []
-                    
                     st.success(f"✅ {len(all_questions)} questions générées !")
                     st.rerun()
                 else:
@@ -298,7 +277,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     current_index = st.session_state.current_question_index
     current_question = questions[current_index]
     
-    # Barre de progression
     progress_percentage = (current_index / len(questions)) * 100
     
     st.markdown(f"""
@@ -312,7 +290,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown("---")
     
-    # Afficher la question
     st.markdown('<div class="question-card">', unsafe_allow_html=True)
     
     question_type_emoji = {
@@ -336,7 +313,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Zone de réponse
     st.markdown("### 💬 Votre réponse")
     
     answer = st.text_area(
@@ -346,7 +322,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
         key=f"answer_{current_index}"
     )
     
-    # Conseils contextuels
     st.markdown('<div class="tip-box">', unsafe_allow_html=True)
     st.markdown("### 💡 Conseils pour cette question")
     
@@ -371,7 +346,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Boutons d'action
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -386,7 +360,7 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
             if not answer or len(answer.strip()) < 20:
                 st.error("⚠️ Votre réponse est trop courte (minimum 20 caractères)")
             else:
-                with st.spinner("⏳ Évaluation de votre réponse avec Groq... (10-20 secondes)"):
+                with st.spinner("⏳ Évaluation de votre réponse avec Groq..."):
                     evaluation = evaluate_answer_api(
                         question=current_question['question'],
                         answer=answer,
@@ -395,7 +369,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                     )
                     
                     if evaluation:
-                        # Sauvegarder
                         st.session_state.answers.append({
                             'question_id': current_question['id'],
                             'question': current_question['question'],
@@ -404,7 +377,6 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                         })
                         st.session_state.evaluations.append(evaluation)
                         
-                        # Afficher le score immédiatement
                         score = evaluation['score']
                         if score >= 70:
                             st.success(f"🎉 Excellent ! Score: {score:.0f}/100")
@@ -413,12 +385,10 @@ elif st.session_state.interview_started and not st.session_state.interview_compl
                         else:
                             st.warning(f"📈 À améliorer. Score: {score:.0f}/100")
                         
-                        # Passer à la question suivante
                         if current_index < len(questions) - 1:
                             st.session_state.current_question_index += 1
                             st.rerun()
                         else:
-                            # Fin de l'entretien
                             st.session_state.interview_completed = True
                             st.rerun()
                     else:
@@ -450,7 +420,6 @@ elif st.session_state.interview_completed:
             st.rerun()
         st.stop()
     
-    # Statistiques globales
     scores = [ev['score'] for ev in evaluations]
     avg_score = sum(scores) / len(scores)
     
@@ -486,7 +455,6 @@ elif st.session_state.interview_completed:
         st.markdown(f"🔴 **Faible (<30)** : {faible} ({faible/len(scores)*100:.0f}%)")
     
     with col2:
-        # Décision finale
         if avg_score >= 75:
             st.success("🎉 **Décision** : Excellent profil ! Vous êtes prêt pour l'entretien.")
         elif avg_score >= 60:
@@ -496,14 +464,12 @@ elif st.session_state.interview_completed:
         else:
             st.error("🔄 **Décision** : À retravailler. Pratiquez régulièrement.")
     
-    # Détail par question
     st.markdown("---")
     st.subheader("📋 Détail des réponses")
     
     for idx, (answer_data, evaluation) in enumerate(zip(st.session_state.answers, evaluations), 1):
         score = evaluation['score']
         
-        # Classe CSS selon le score
         if score >= 70:
             card_class = "evaluation-excellent"
             emoji = "🟢"
@@ -539,7 +505,6 @@ elif st.session_state.interview_completed:
                 for reco in evaluation['recommandations']:
                     st.markdown(f"- {reco}")
     
-    # Actions finales
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 1, 1])
     
@@ -571,14 +536,13 @@ st.sidebar.markdown("""
 
 1. **Sélectionnez un poste** pour lequel vous voulez vous entraîner
 2. **Répondez aux questions** une par une
-3. **Recevez un feedback immédiat** après chaque réponse
+3. **Recevez un feedback immédiat** pour chaque réponse
 4. **Analysez vos résultats** à la fin
 
 ### 💡 Conseils
 
 - **Structurez vos réponses** (STAR: Situation, Tâche, Action, Résultat)
 - **Donnez des exemples concrets** de projets
-- **Mentionnez des chiffres** (amélioration de X%, réduction de Y%)
 - **Soyez authentique**
 
 ### 🎯 Objectif

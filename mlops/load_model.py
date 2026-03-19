@@ -4,7 +4,6 @@ from pathlib import Path
 
 model_name = "job-matcher-classifier"
 
-# ✅ CHANGÉ : Chemin sans le double dossier /artifacts/artifacts
 models_dir = Path(__file__).parent.parent / "models" / model_name / "artifacts"
 
 try:
@@ -14,11 +13,11 @@ try:
     with open(models_dir / "features.txt") as f:
         features = f.read().strip().split("\n")
     
-    print(f"✅ Modèle chargé : {model_name}")
+    print(f"Modèle chargé : {model_name}")
     print(f"   Chemin : {models_dir}")
 
 except Exception as e:
-    print(f"❌ Erreur : {e}")
+    print(f"Erreur : {e}")
     exit(1)
 
 def predict(features_dict):
@@ -42,4 +41,4 @@ test_features = {
 }
 
 result = predict(test_features)
-print(f"\n📊 Prédiction : {result}")
+print(f"\nPrédiction : {result}")

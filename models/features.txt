@@ -1,0 +1,15 @@
+coverage
+quality
+nb_covered_skills
+nb_missing_skills
+skills_ratio
+similarity_mean
+similarity_max
+similarity_std
+top3_similarity_avg
+tfidf_similarity
+embedding_similarity
+nb_resume_technical
+nb_resume_soft
+nb_job_technical
+nb_job_soft
