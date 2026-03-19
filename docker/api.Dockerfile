@@ -1,13 +1,17 @@
-FROM python:3.10-slim as builder
+FROM python:3.10-slim AS builder
 
 WORKDIR /app
 
 COPY requirements/ ./requirements/
 
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
 RUN python -m venv /opt/venv && \
     . /opt/venv/bin/activate && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements/base.txt -r requirements/api.txt
+    pip install --upgrade pip && \
+    pip install --index-url https://download.pytorch.org/whl/cpu torch==2.3.1 && \
+    pip install -r requirements/base.txt -r requirements/api.txt
 
 # ============================================================================
 # RUNTIME
@@ -21,7 +25,7 @@ COPY --from=builder /opt/venv /opt/venv
 COPY src/ ./src/
 COPY data/ ./data/
 COPY models/ ./models/
-COPY tests/ ./tests/
+# COPY tests/ ./tests/
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -30,11 +34,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-RUN . /opt/venv/bin/activate && python -c \
-    "from sentence_transformers import SentenceTransformer; \
-    print('Téléchargement all-mpnet-base-v2...'); \
-    SentenceTransformer('all-mpnet-base-v2'); \
-    print('Modèle chargé')"
+RUN . /opt/venv/bin/activate && python -m spacy download en_core_web_sm 2>/dev/null || true
 
 RUN . /opt/venv/bin/activate && python -m spacy download en_core_web_sm 2>/dev/null || true
 
