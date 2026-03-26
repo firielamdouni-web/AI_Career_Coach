@@ -1,4 +1,4 @@
-[![CI/CD Pipeline](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml/badge.svg)](https://github.com/firielamdouni-web/AI_Career_Coach/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/Robert-ung/AI_Career_Coach/actions/workflows/ci.yml/badge.svg)](https://github.com/Robert-ung/AI_Career_Coach/actions/workflows/ci.yml)
 [![Python 3.10](https://img.shields.io/badge/python-3.10-blue.svg)](https://www.python.org/downloads/release/python-310/)
 [![Tests](https://img.shields.io/badge/tests-168%20passed-brightgreen.svg)]()
 
@@ -16,6 +16,14 @@
 4. **Recommandations personnalisées** avec explication des forces et faiblesses
 5. **Simulation d'entretiens** avec génération de questions contextuelles
 6. **MLOps pipeline** avec tracking des expériences et déploiement de modèles
+
+## 🎥 Démonstration Vidéo
+
+Découvrez notre projet **AI Career Coach** en action dans cette courte vidéo de démonstration :
+
+[![AI Career Coach - Démonstration Vidéo](https://img.youtube.com/vi/e0O5X63dMZU/0.jpg)](https://www.youtube.com/watch?v=e0O5X63dMZU)
+
+> Cliquez sur l'image ou [ce lien](https://www.youtube.com/watch?v=e0O5X63dMZU) pour visionner la vidéo.
 
 ## 📁 Structure du projet
 
